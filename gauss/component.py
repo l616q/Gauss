@@ -8,6 +8,7 @@ from __future__ import division
 from __future__ import print_function
 import abc
 from typing import Callable, List
+from gauss.entity import BaseDataset
 
 class Component(metaclass=abc.ABCMeta):
     """Base class for a component of ML workflow.
