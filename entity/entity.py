@@ -21,6 +21,6 @@ class Entity(metaclass=abc.ABCMeta):
     def name(self):
         return self._name
     @abc.abstractmethod
-    def self_print(self)
+    def __repr__(self)
         pass
   

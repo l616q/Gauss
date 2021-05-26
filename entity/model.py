@@ -12,7 +12,6 @@ class Model(Entity):
     def __init__(self,
                  name: str,
                  model_path: str,
-                 train_flag: bool,
                  task_type:  str,
                  ):
         self._model_path = file_path
@@ -27,6 +26,9 @@ class Model(Entity):
     @abc.abstractmethod
     def predict(self, test: BaseDataset):
         pass
-    @abc.abstractmethod
-    def get_met
-    
+    # @abc.abstractmethod
+    # def get_train_metric(self):
+    # @abc.abstractmethod
+    # def get_train_loss(self):
+    # @abc.abstractmethod
+    # def get_val_loss(self):
