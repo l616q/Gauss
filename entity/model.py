@@ -13,6 +13,7 @@ class Model(Entity):
                  name: str,
                  model_path: str,
                  task_type:  str,
+                 train_flag: bool
                  ):
         self._model_path = file_path
         self._train_flag = train_flag
@@ -26,6 +27,9 @@ class Model(Entity):
     @abc.abstractmethod
     def predict(self, test: BaseDataset):
         pass
+    # @abc.abstractmethod
+    # def eval(self, test: BaseDataset):
+    #     pass
     # @abc.abstractmethod
     # def get_train_metric(self):
     # @abc.abstractmethod

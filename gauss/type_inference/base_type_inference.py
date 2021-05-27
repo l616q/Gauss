@@ -3,19 +3,15 @@
 # Copyright (c) 2020, Citic Inc. All rights reserved.
 # Authors: Lab
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import abc
-from typing import Callable, List
+from entity import Entity
 
 class BaseTypeInference(Component):
     def __init__(self,
                  name: str,
                  train_flag: bool,
-                 source_file_path: str,
-                 target_file_path: str):
+                 source_file_path="null",
+                 target_file_path: str,
+                 target_file_prefix="target"):
         self._source_file_path = source_file_path
         self._target_file_path = target_file_path
         self._target_file_prefix = target_file_prefix
@@ -24,3 +20,12 @@ class BaseTypeInference(Component):
             name = name,
             train_flag = train_flag
         )
+        @property
+        def source_file_path(self):
+        return self._source_file_path
+        @property
+        def target_file_path(self):
+        return self._target_file_path
+        @property
+        def target_file_prefix(self):
+        return self._target_file_prefix

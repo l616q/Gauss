@@ -27,8 +27,6 @@ class Component(metaclass=abc.ABCMeta):
         """
         self._name = name
         self._train_flag = train_flag
-    def init(self, sess):
-        pass
     @property
     def name(self):
         return self._name
@@ -36,18 +34,17 @@ class Component(metaclass=abc.ABCMeta):
     @property
     def train_flag(self):
         return self._train_flag
-
     
-    def run(self)
+    def run(self, **entity)
         if(_train_flag)
-            _train_run()
+            _train_run(**entity)
         else
-            _inference_run()
+            _inference_run(**entity)
 
     @abc.abstractmethod
-    def _train_run(self)
+    def _train_run(self,**entity)
         pass
     @abc.abstractmethod
-    def _inference_run(self)
+    def _predict_run(self,**entity)
         pass
   
