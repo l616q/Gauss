@@ -18,7 +18,9 @@ class Component(metaclass=abc.ABCMeta):
     """
     def __init__(self,
                  name: str,
-                 train_flag: bool = True):
+                 train_flag: bool = True,
+                 enable bool = True
+                 ):
         """Construct a Component.
 
         :param name: The name of the Component.
@@ -27,9 +29,15 @@ class Component(metaclass=abc.ABCMeta):
         """
         self._name = name
         self._train_flag = train_flag
+        self._enable = enable
+
     @property
     def name(self):
         return self._name
+    
+    @property
+    def enable(self):
+        return self._enable
 
     @property
     def train_flag(self):

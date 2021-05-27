@@ -35,6 +35,7 @@ class FeatureConf(Entity):
     def reset_feature_type(key, ftype):
         assert(_feature_dict.has_key("key"))
         assert(ftype in ("numerical", "catagory"))
+    def write()
 
 
         
