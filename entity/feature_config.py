@@ -27,12 +27,14 @@ class FeatureItemConf(object):
 class FeatureConf(Entity):
     def __init__(self, name, file_path):
         self._file_path = file_path
-        self._dict = {}
+        self._feature_dict = {}
         super(Entity, self).__init__(
             name = name,
         )
     def parse():
     def reset_feature_type(key, ftype):
+        assert(_feature_dict.has_key("key"))
+        assert(ftype in ("numerical", "catagory"))
 
 
         
