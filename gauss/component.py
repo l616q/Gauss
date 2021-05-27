@@ -19,7 +19,7 @@ class Component(metaclass=abc.ABCMeta):
     def __init__(self,
                  name: str,
                  train_flag: bool = True,
-                 enable bool = True
+                 enable: bool = True
                  ):
         """Construct a Component.
 
