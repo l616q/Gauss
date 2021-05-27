@@ -11,11 +11,11 @@ from typing import Callable, List
 from gauss.entity import BaseDataset
 
 class Component(metaclass=abc.ABCMeta):
-    """Base class for a component of ML workflow.
+    """Base class for a component of ML workflow, such as feature  generation,
+    feature selector and so on     
     All subclasses of Component must override the _train_run() method
     and _inference_run() method
     """
-
     def __init__(self,
                  name: str,
                  train_flag: bool = True):
