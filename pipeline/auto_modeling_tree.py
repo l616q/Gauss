@@ -21,9 +21,7 @@ class AutoModelingTree(Object):
                  feature_generator: str="featuretools",
                  unsupervised_feature_selector: str="unsupervised",
                  supervised_feature_selector: str="supervised",
-                 model_zoo: list=["xgb", "lightgbm", "cgb", "lr_lightgbm", "dnn"],
-                 auto_ml: str="plain",
-
+                 auto_ml: str="plain"
                  ):  
         self.name = name
         self.work_root = work_root
@@ -38,14 +36,13 @@ class AutoModelingTree(Object):
         self.feature_generator=feature_generator
         self.unsupervised_feature_selector = unsupervised_feature_selector
         self.supervised_feature_selector=supervised_feature_selector
-        self.model_zoo=model_zoo
         self.auto_ml=auto_ml
         self.need_data_clear = False
         self.best_model="XXX"
         self.best_metric=None
         self.best_result_root="XXX"
     def run_route(folder_prefix_str, data_clear_flag, feature_generator_flag, unsupervised_feature_generator_flag, 
-                  supervised_feature_selector_flag):
+                  supervised_feature_selector_flag, model_zoo):
         work_root = self.work_root + "/" + folder_prefix_str
         pipline_configure = "data_clear_flag" : data_clear_flag, "feature_generator_flag" : feature_generator_flag...
         work_feaure_root = work_root + "/feature"
@@ -102,8 +99,21 @@ class AutoModelingTree(Object):
             if(compare(local_metric, best_metric)) < 0
                 best_model = model
                 best_metric = local_metric
-        return best_model, best_metric
+        return best_model, best_metric, work_root
+    def update_best(local_best_model, local_best_metric, local_best_work_root):
+        if compare(local_best_metric, self.best_metric) < 0
+            self.best_model = local_best_metric
+            self.best_metric = local_best_metric
+            self.best_result_root = local_best_work_root
+
     def run(self):
+        update_best(run_route("no-clear_no-feagen_no-unsupfeasel_no-supfeasel", False, False, False, False, ["xgb, lightgbm, catboost"]))
+        update_best(run_route("clear_feagen_supfeasel_no-supfeasel", True, True, True, False, ["xgb, lightgbm, catboost"]))
+        update_best(run_route("no-clear_no-feagen_no-feasel", True, True, True, True, ["lr+lightgbm_V1", "lr+lightgbm_V2"]))
+        
+
+            
+
 
        
        
