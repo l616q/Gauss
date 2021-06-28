@@ -1,29 +1,16 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2020, Citic Inc. All rights reserved.
-# Authors: Lab
+# Copyright (c) 2020, Citic-Lab. All rights reserved.
+# Authors: citic-lab
+from gauss.component import Component
 
-from entity import Entity
 
 class BaseDataClear(Component):
-    def __init__(self,
-                 name: str,
-                 train_flag: bool,
-                 ):
-        self._source_file_path = source_file_path
-        self._target_file_path = target_file_path
-        self._target_file_prefix = target_file_prefix
-        self._update_flag = False
-        super(Component, self).__init__(
-            name = name,
-            train_flag = train_flag
-        )
-        @property
-        def source_file_path(self):
-        return self._source_file_path
-        @property
-        def target_file_path(self):
-        return self._target_file_path
-        @property
-        def target_file_prefix(self):
-        return self._target_file_prefix
+    def __init__(self, name, train_flag, enable):
+        super(BaseDataClear, self).__init__(name=name, train_flag=train_flag, enable=enable)
+
+    def _train_run(self, **entity):
+        pass
+
+    def _predict_run(self, **entity):
+        pass

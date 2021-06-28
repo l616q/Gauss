@@ -6,10 +6,35 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from gauss import Component
-from gauss.model import Model
+from gauss.model.model import Model
 
-class Gbdt(Model):
+
+class GaussXgb(Model):
     """gbdt model, include xgboost, lightgbm, catboost
     """
-  
+
+    def __init__(self, name: str, metric_name: str):
+        super().__init__(name, metric_name)
+
+    def model_save(self):
+        pass
+
+class GaussLightgbm(Model):
+    """gbdt model, include xgboost, lightgbm, catboost
+    """
+
+    def __init__(self, name: str, metric_name: str):
+        super().__init__(name, metric_name)
+
+    def model_save(self):
+        pass
+
+class GaussCatboost(Model):
+    """gbdt model, include xgboost, lightgbm, catboost
+    """
+
+    def __init__(self, name: str, metric_name: str):
+        super().__init__(name, metric_name)
+
+    def model_save(self):
+        pass

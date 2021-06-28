@@ -17,10 +17,11 @@ class Entity(metaclass=abc.ABCMeta):
         :param name: The name of the Entity.
         """
         self._name = name
+
     @property
     def name(self):
         return self._name
+
     @abc.abstractmethod
-    def __repr__(self)
+    def __repr__(self):
         pass
-  
