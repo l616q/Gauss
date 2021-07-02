@@ -41,10 +41,16 @@ class AutoModelingTree(Object):
         self.best_model="XXX"
         self.best_metric=None
         self.best_result_root="XXX"
-    def run_route(folder_prefix_str, data_clear_flag, feature_generator_flag, unsupervised_feature_generator_flag, 
-                  supervised_feature_selector_flag, model_zoo):
+    def run_route(folder_prefix_str,
+                  data_clear_flag,
+                  feature_generator_flag,
+                  unsupervised_feature_generator_flag, 
+                  supervised_feature_selector_flag,
+                  model_zoo):
         work_root = self.work_root + "/" + folder_prefix_str
-        pipline_configure = "data_clear_flag" : data_clear_flag, "feature_generator_flag" : feature_generator_flag...
+        pipline_configure_path = work_root + "/" + "pipline.configure"
+        pipline_configure = "data_clear_flag" : data_clear_flag, "feature_generator_flag" : feature_generator_flag, "metric_name" : XX, "task_type" :
+        utils.write(pipline_configure_path, pipline_configure)
         work_feaure_root = work_root + "/feature"
         utils.mkdir(work_root)
         utils.mkdir(work_feaure_root)
