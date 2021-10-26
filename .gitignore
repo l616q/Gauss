@@ -1,4 +1,8 @@
-venv
 .idea
+.history
+.vscode
 */__pycache__
 experiments
+experiment
+test
+test_dataset
