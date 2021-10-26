@@ -241,9 +241,6 @@ class MulticlassF1(BaseMetric):
 
         return self._metric_result
 
-    @property
-    def required_label_names(self):
-        return [self._label_name]
 
     @property
     def metric_result(self):

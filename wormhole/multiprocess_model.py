@@ -15,11 +15,7 @@ from entity.model.model import ModelWrapper
 from utils.base import get_current_memory_gb
 from utils.bunch import Bunch
 from utils.Logger import logger
-<<<<<<< HEAD:entity/model/multiprocess_model.py
-from utils.feature_index_exec import feature_index_generator
-=======
 from utils.feature_index_exec import generate_feature_index
->>>>>>> master:wormhole/multiprocess_model.py
 
 
 class MultiprocessModelWrapper(ModelWrapper, ABC):
