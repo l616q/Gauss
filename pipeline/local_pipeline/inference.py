@@ -11,9 +11,15 @@ from os.path import join
 
 import pandas as pd
 
+<<<<<<< HEAD:local_pipeline/inference.py
+from local_pipeline.sub_pipeline.core_chain import CoreRoute
+from local_pipeline.pipeline_utils.mapping import EnvironmentConfigure
+from local_pipeline.sub_pipeline.preprocess_chain import PreprocessRoute
+=======
 from pipeline.local_pipeline.core_chain import CoreRoute
 from pipeline.local_pipeline.mapping import EnvironmentConfigure
 from pipeline.local_pipeline.preprocess_chain import PreprocessRoute
+>>>>>>> master:pipeline/local_pipeline/inference.py
 from utils.bunch import Bunch
 from utils.constant_values import ConstantValues
 

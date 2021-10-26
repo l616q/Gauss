@@ -1,8 +1,11 @@
 .idea
 .history
 .vscode
-*/__pycache__
-experiments
-experiment
-test
-test_dataset
+**/__pycache__/
+**/*.log
+**/*.pyc
+test_dataset/
+test/
+experiment/
+experiments/
+cache/

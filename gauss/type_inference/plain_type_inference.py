@@ -73,7 +73,7 @@ class PlainTypeInference(BaseTypeInference):
 
         self.target_check(dataset=entity["train_dataset"])
 
-        self._check_init_final_conf()
+        # self._check_init_final_conf()
         self.final_configure_generation()
 
     def _increment_run(self, **entity):
