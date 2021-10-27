@@ -23,10 +23,6 @@ class BaseDataset(Entity):
         self._memory_only = memory_only
         self._task_name = task_name
 
-        # Bunch object, including features, target,
-        # feature_names[optional], target_names[optional]
-        self._bunch = None
-
     @abc.abstractmethod
     def load_data(self):
         """load data from file provided."""

@@ -38,8 +38,7 @@ class TFPlainDataset(BaseDataset):
             name=params["name"],
             data_path=None,
             task_name=params["task_name"],
-            target_name=params["target_name"] \
-                if params.get("target_name") else None,
+            train_flag=params["train_flag"],
             memory_only=params["memory_only"] \
                 if params.get("memory_only") else True
             )
@@ -72,8 +71,8 @@ class TFPlainDataset(BaseDataset):
         """update private attribute selected_features, which are actually
         needed features in current trail.
         """
-        if self._target_name:
-            self._selected_features = features + self._target_name
+        if self._target_names:
+            self._selected_features = features + self._target_names
         else:
             self._selected_features = features
         self._categorical_features = cate_fea
@@ -115,8 +114,8 @@ class TFPlainDataset(BaseDataset):
         self._iterator.initializer.run(session=sess, feed_dict={self._batch_size: self._batch_size_param})
             
     @property 
-    def target_name(self):
-        return self._target_name
+    def target_names(self):
+        return self._target_names
 
     @property
     def batch_size(self):

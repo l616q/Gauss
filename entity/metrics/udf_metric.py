@@ -76,6 +76,12 @@ class AUC(BaseMetric):
 
         return self._metric_result
 
+    def metric_result(self):
+        pass
+
+    def required_label_names(self):
+        pass
+
 
 class BinaryF1(BaseMetric):
     """

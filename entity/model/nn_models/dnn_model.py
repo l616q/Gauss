@@ -24,7 +24,7 @@ from core.tfdnn.transforms.categorical_transform import CategoricalTransform
 from core.tfdnn.statistics_gens.dataset_statistics_gen import DatasetStatisticsGen
 from core.tfdnn.statistics_gens.external_statistics_gen import ExternalStatisticsGen
 from utils.base import mkdir
-from utils.feature_name_exec import feature_list_generator
+from utils.feature_name_exec import generate_feature_list
 from core.tfdnn.factory.network_factory import NetworkFactory
 from core.tfdnn.factory.loss_factory import LossFunctionFactory 
 
@@ -41,6 +41,9 @@ class GaussNN(ModelWrapper):
             model_root_path=params["model_root_path"],
             task_name=params["task_name"],
             train_flag=params["train_flag"],
+            init_model_root=params["init_model_root"],
+            metric_eval_used_flag=params["metric_eval_used_flag"],
+            use_weight_flag=params["use_weight_flag"]
             )
 
         self._loss_name = params["loss_func"]
@@ -88,6 +91,7 @@ class GaussNN(ModelWrapper):
     def val_best_metric_result(self):
         return self._metrics.metrics_result
     
+    
     def update_feature_conf(self, feature_conf):
         """Select features using in current model before 'dataset.build()'.
 
@@ -99,7 +103,7 @@ class GaussNN(ModelWrapper):
         """
 
         # self._feature_conf = feature_conf
-        self._feature_list = feature_list_generator(feature_conf=feature_conf)
+        self._feature_list = generate_feature_list(feature_conf=feature_conf)
         self._categorical_features, self._numerical_features = \
             self._cate_num_split(feature_conf=feature_conf)
 
@@ -292,7 +296,7 @@ class GaussNN(ModelWrapper):
             name="tf_dataset",
             dataset=dataset,
             task_name=self._task_name,
-            target_name=dataset.target_name
+            train_flag=self._train_flag
         )
         return dataset
 
@@ -364,12 +368,6 @@ class GaussNN(ModelWrapper):
     def _predict_process(self):
         pass
 
-    def set_best(self):
-        pass
-
-    def update_best(self):
-        pass
-
     def _generate_sub_dataset(self):
         pass
 
@@ -382,5 +380,38 @@ class GaussNN(ModelWrapper):
     def _loss_func(self):
         pass
 
-    def binary_train(self):
+    def _binary_train(self):
+        pass
+    
+    def _multiclass_train(self):
+        pass
+
+    def _binary_increment(self):
+        pass
+
+    def _eval(self):
+        pass
+
+    def _multiclass_increment(self):
+        pass
+
+    def _predict_logit(self):
+        pass
+
+    def _predict_preprocess(self):
+        pass
+
+    def _predict_prob(self):
+        pass
+
+    def _regression_increment(self):
+        pass
+
+    def _regression_train(self):
+        pass
+
+    def _set_best(self):
+        pass
+
+    def _update_best(self):
         pass

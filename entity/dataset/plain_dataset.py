@@ -20,6 +20,7 @@ from utils.Logger import logger
 from utils.constant_values import ConstantValues
 from utils.reduce_data import reduce_data
 
+from icecream import ic
 
 class PlaintextDataset(BaseDataset):
     """loading raw data to PlaintextDataset object.
@@ -279,8 +280,8 @@ class PlaintextDataset(BaseDataset):
             self._column_size = data.shape[1] + target.shape[1]
 
             if self._weight_column_flag is True:
-                if self._weight_column_names not in data.columns:
-                    raise ValueError("Column: {} doesn't exist in dataset file.".format(self._weight_column_names))
+                # if self._weight_column_names not in data.columns:
+                #     raise ValueError("Column: {} doesn't exist in dataset file.".format(self._weight_column_names))
                 weight = data[self._weight_column_names]
                 data.drop(self._weight_column_names, axis=1, inplace=True)
             else:
