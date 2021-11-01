@@ -11,7 +11,7 @@ from core.tfdnn.networks.mlp_network import (
 
 class NetworkFactory():
 
-    CLS = "classification"
+    CLS = "binary_classification"
     REG = "regression"
 
     @staticmethod

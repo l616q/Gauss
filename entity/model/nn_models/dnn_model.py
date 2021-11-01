@@ -28,11 +28,23 @@ from utils.feature_name_exec import generate_feature_list
 from core.tfdnn.factory.network_factory import NetworkFactory
 from core.tfdnn.factory.loss_factory import LossFunctionFactory 
 
+from icecream import ic
+
 class GaussNN(ModelWrapper):
     """Multi layer perceptron neural network wrapper.
 
     Model wrapper wrapped a neural network model which can be used in training 
-    or predicting. When training a model, """
+    or predicting. When training a model.
+    
+    Parameters:
+    --------------
+    model_root_path:
+    init_model_root:
+    metric_eval_used_flag:
+    use_weight_flag:
+    loss_func: str, loss function name using in current training.
+
+    """
 
     def __init__(self, **params):
         """"""
@@ -59,8 +71,6 @@ class GaussNN(ModelWrapper):
             self._model_root_path, "restore_checkpoint")
         self._save_tensorboard_logdir = os.path.join(
             self._model_root_path, "tensorboard_logdir")
-        self._save_model_dir = os.path.join(
-            self._model_root_path, "saved_model")
         
         self._model_params = {}
         self._categorical_features = None
@@ -69,6 +79,7 @@ class GaussNN(ModelWrapper):
         self._best_numerical_features = None
         self._best_metrics_result = None
 
+        # network components
         self._statistics_gen = None
         self._statistics = None
         self._transform1 = None
@@ -119,15 +130,16 @@ class GaussNN(ModelWrapper):
         categorical_features, numerical_features = [], []
         for name, info in configs.items():
             if name in self._feature_list:
-                if info["ftype"] != "numerical":
-                    categorical_features.append(name)
-                else:
+                if info["ftype"] == "numerical":
                     numerical_features.append(name)
+                else:
+                    categorical_features.append(name)
+
         return categorical_features, numerical_features
         
     def train_init(self, **entity):
         """Initialize modules using for training a model and build 
-        'Calculate Graph' from tensorflow.
+        'Calculation Graph' by tensorflow.
 
         Actually, neural network model includes several seperated modules,
         'DatasetStatisticsGen', 'CategoricalTransform', 'NumericalTransform', 
@@ -136,12 +148,11 @@ class GaussNN(ModelWrapper):
         1.x backned, calculate graph and placeholders are create and feed 
         before training. 
 
-        Args:
-            dataset: PlaintextDataset, dataset for training.
-
-            val_dataset: PlaintextDataset, dataset for validate current model.
-
-            metrics: Metrics, judgement scores for evaluate a model.
+        Parameters:
+        --------------
+        dataset: PlaintextDataset, dataset for training.
+        val_dataset: PlaintextDataset, dataset for validate current model.
+        metrics: Metrics, judgement scores for evaluate a model.
         """
         self._reset_tf_graph()
         
@@ -181,12 +192,12 @@ class GaussNN(ModelWrapper):
             task_name=self._task_name,
             activation=self._model_params["activation"],
             hidden_sizes=self._model_params["hidden_sizes"],
-            loss=Loss(label_name=train_dataset.target_name)
+            loss=Loss(label_name=train_dataset.target_names)
         )
         # Phase 4. Create Evaluator and Trainer ----------------------------
-        self._metrics = entity["metric"]
+        self._metric = entity["metric"]
         metrics_wrapper = { 
-            self._metrics.name: self._metrics
+            self._metric.name: self._metric
         }
         self._evaluator = Evaluator(
             dataset=val_dataset,
@@ -254,7 +265,6 @@ class GaussNN(ModelWrapper):
             )
 
     def train(self, **entity):
-        assert self._train_flag
         self.train_init(**entity)
         self._trainer.run()
 
@@ -296,7 +306,9 @@ class GaussNN(ModelWrapper):
             name="tf_dataset",
             dataset=dataset,
             task_name=self._task_name,
-            train_flag=self._train_flag
+            train_flag=self._train_flag,
+            memory_only=True,
+            target_names=dataset.target_names
         )
         return dataset
 
@@ -304,7 +316,6 @@ class GaussNN(ModelWrapper):
         path_attrs = [
             self._save_statistics_filepath, self._save_checkpoints_dir, 
             self._restore_checkpoint_dir, self._save_tensorboard_logdir,
-            self._save_model_dir
         ]
         for path in path_attrs:
             if not os.path.isdir(path):

@@ -75,8 +75,9 @@ class ValidateLogger(object):
     def _log_to_tensorboard(self, metric_results, step):
         if self._tensorboard_writer:
             summary = tf.compat.v1.Summary(
-                value=[tf.compat.v1.Summary.Value(tag=("valid_%s" % metric_name),
-                                        simple_value=metric_result.result)
+                value=[tf.compat.v1.Summary.Value(
+                    tag=("valid_%s" % metric_name),
+                    simple_value=metric_result.result)
                        for metric_name, metric_result in metric_results.items()]
             )
             self._tensorboard_writer.add_summary(summary, step)

@@ -7,6 +7,8 @@ import tensorflow as tf
 from entity.dataset.base_dataset import BaseDataset
 from entity.dataset.plain_dataset import PlaintextDataset
 
+from icecream import ic
+
 pd.options.mode.chained_assignment = None # default = "warn"
 
 class TFPlainDataset(BaseDataset):
@@ -43,6 +45,7 @@ class TFPlainDataset(BaseDataset):
                 if params.get("memory_only") else True
             )
         
+        self._target_names = params["target_names"]
         self._df_dataset = self._v_stack(params["dataset"])
 
         self._file_repeat = params["file_repeat"] \
@@ -60,6 +63,7 @@ class TFPlainDataset(BaseDataset):
         self._batch_size = tf.compat.v1.placeholder(dtype=tf.int64, shape=())
         self._batch_size_param = 8
 
+
     def __repr__(self):
         if not hasattr(self, "_selected_features"):
             return str(self._df_dataset.head())
@@ -71,10 +75,10 @@ class TFPlainDataset(BaseDataset):
         """update private attribute selected_features, which are actually
         needed features in current trail.
         """
-        if self._target_names:
-            self._selected_features = features + self._target_names
-        else:
-            self._selected_features = features
+        # if self._target_names:
+        #     self._selected_features = features + self._target_names
+        # else:
+        self._selected_features = features
         self._categorical_features = cate_fea
 
     def build(self):

@@ -20,7 +20,6 @@ from utils.Logger import logger
 from utils.constant_values import ConstantValues
 from utils.reduce_data import reduce_data
 
-from icecream import ic
 
 class PlaintextDataset(BaseDataset):
     """loading raw data to PlaintextDataset object.

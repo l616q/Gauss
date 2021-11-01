@@ -112,8 +112,8 @@ class TabularAutoML(BaseAutoML):
         assert "train_dataset" in entity and isinstance(entity["train_dataset"], BaseDataset)
         assert "val_dataset" in entity and isinstance(entity["val_dataset"], BaseDataset)
         assert "metric" in entity and isinstance(entity["metric"], BaseMetric)
-        assert "loss" in entity
-        assert isinstance(entity["loss"], BaseLoss) if entity["loss"] is not None else True
+        # assert "loss" in entity
+        # assert isinstance(entity["loss"], BaseLoss) if entity["loss"] is not None else True
 
         self.__model = entity["model"]
 
@@ -130,7 +130,9 @@ class TabularAutoML(BaseAutoML):
                 )
             )
 
-            tuner.update_search_space(search_space=self.__search_space.get(entity["model"].name))
+            tuner.update_search_space(
+                search_space=self.__search_space.get(entity["model"].name)
+                )
             for trial in range(self.__trial_num):
                 self._trial_count += 1
 
