@@ -114,7 +114,7 @@
       "dnn_cls":{
             "batch_size": {
                   "_type": "choice",
-                  "_value": [1, 2, 4]
+                  "_value": [32, 64, 128]
             },
             "embed_size": {
                   "_type": "choice",
@@ -143,6 +143,10 @@
             "train_epochs": {
                   "_type": "choice",
                   "_value": [20, 50, 100]
+            },
+            "early_stop": {
+                  "_type": "choice",
+                  "_value": [true, false]
             }
       }
  }

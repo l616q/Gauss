@@ -19,7 +19,6 @@ from sklearn.metrics import mean_squared_error
 from entity.metrics.base_metric import BaseMetric
 from entity.metrics.base_metric import MetricResult
 
-from icecream import ic
 
 class AUC(BaseMetric):
     """

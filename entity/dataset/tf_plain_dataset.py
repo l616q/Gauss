@@ -7,8 +7,6 @@ import tensorflow as tf
 from entity.dataset.base_dataset import BaseDataset
 from entity.dataset.plain_dataset import PlaintextDataset
 
-from icecream import ic
-
 pd.options.mode.chained_assignment = None # default = "warn"
 
 class TFPlainDataset(BaseDataset):
@@ -94,7 +92,7 @@ class TFPlainDataset(BaseDataset):
         self._dataset = self._build_dataset()
         self._iterator = tf.compat.v1.data.make_initializable_iterator(self._dataset)
         # self._iterator = self._dataset.make_initializable_iterator()
-        self._next_batch = self._iterator.get_next("inputs_data")
+        self._next_batch = self._iterator.get_next()
 
     def update_dataset_parameters(self, batch_size):
         # TODO: update hyper parameters which will be used in nn further.
