@@ -15,11 +15,11 @@ class Predictor(object):
                  dataset,
                  transform_functions,
                  eval_fn,
-                 restore_checkpoint_dir=None):
+                 restore_checkpoints_dir=None):
         self._dataset = dataset
         self._transform_functions = transform_functions
         self._eval_fn = eval_fn
-        self._restore_checkpoint_dir = restore_checkpoint_dir
+        self._restore_checkpoints_dir = restore_checkpoints_dir
 
         self._predict = self._build_predict_graph()
 
@@ -35,9 +35,9 @@ class Predictor(object):
 
     def _create_session_and_init(self):
         sess = tf.Session()
-        if self._restore_checkpoint_dir:
-            checkpoint_saver = tf.train.Saver(max_to_keep=None)
-            checkpoint_saver.restore(sess, tf.train.latest_checkpoint(self._restore_checkpoint_dir))
+        if self._restore_checkpoints_dir:
+            checkpoints_saver = tf.train.Saver(max_to_keep=None)
+            checkpoints_saver.restore(sess, tf.train.latest_checkpoint(self._restore_checkpoints_dir))
         else:
             tf.compat.v1.global_variables_initializer().run(session=sess)
         tf.compat.v1.tables_initializer().run(session=sess)

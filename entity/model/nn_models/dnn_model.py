@@ -8,12 +8,13 @@ import gc
 import copy
 import shutil
 
-import tensorflow as tf
-
 from entity.model.model import ModelWrapper
 from entity.dataset.tf_plain_dataset import TFPlainDataset
 from entity.feature_configuration.feature_config import FeatureConf 
-from core.tfdnn.trainers.trainer import Trainer
+from core.tfdnn.trainers.trainer import (
+    Trainer,
+    IncrementalTrainer
+)
 from core.tfdnn.evaluators.evaluator import Evaluator
 from core.tfdnn.evaluators.predictor import Predictor
 from core.tfdnn.transforms.numerical_transform import (
@@ -28,7 +29,6 @@ from utils.feature_name_exec import generate_feature_list
 from core.tfdnn.factory.network_factory import NetworkFactory
 from core.tfdnn.factory.loss_factory import LossFunctionFactory 
 
-from icecream import ic
 
 class GaussNN(ModelWrapper):
     """Multi layer perceptron neural network wrapper.
@@ -43,6 +43,7 @@ class GaussNN(ModelWrapper):
     metric_eval_used_flag:
     use_weight_flag:
     loss_func: str, loss function name using in current training.
+    TODO: check loss function when train_flag given.
 
     """
 
@@ -55,7 +56,9 @@ class GaussNN(ModelWrapper):
             train_flag=params["train_flag"],
             init_model_root=params["init_model_root"],
             metric_eval_used_flag=params["metric_eval_used_flag"],
-            use_weight_flag=params["use_weight_flag"]
+            use_weight_flag=params["use_weight_flag"],
+            decay_rate=params["decay_rate"] if params.get("decay_rate")\
+                else None
             )
 
         self._loss_name = params["loss_func"]
@@ -63,11 +66,11 @@ class GaussNN(ModelWrapper):
         self.model_config_file_name = self._model_config_root + "/" + self.name + ".model_conf.yaml"
         self.feature_config_file_name = self._feature_config_root + "/" + self.name + ".final.yaml"
 
-        self._save_statistics_filepath = os.path.join(
+        self._save_statistics_dir = os.path.join(
             self._model_root_path, "statistics")
         self._save_checkpoints_dir = os.path.join(
             self._model_root_path, "checkpoint")
-        self._restore_checkpoint_dir = os.path.join(
+        self._restore_checkpoints_dir = os.path.join(
             self._model_root_path, "restore_checkpoint")
         self._save_tensorboard_logdir = os.path.join(
             self._model_root_path, "tensorboard_logdir")
@@ -77,7 +80,7 @@ class GaussNN(ModelWrapper):
         self._best_categorical_features = None
         self._numerical_features = None
         self._best_numerical_features = None
-        self._best_metrics_result = None
+        self._best_metric_result = None
 
         # network components
         self._statistics_gen = None
@@ -96,11 +99,11 @@ class GaussNN(ModelWrapper):
 
     @property
     def val_metric(self):
-        return self._metrics.metrics_result
+        return self._metric.metric_result
 
     @property
     def val_best_metric_result(self):
-        return self._metrics.metrics_result
+        return self._metric.metric_result
     
     
     def update_feature_conf(self, feature_conf):
@@ -111,6 +114,7 @@ class GaussNN(ModelWrapper):
         object of all features, property 'used' in conf will decided whether
         to keep the feature or not, and features will be classified by it's 
         `dtype` mentioned in config.
+        NOTE: this function called when `Supervised Feature Selection` activated.
         """
 
         # self._feature_conf = feature_conf
@@ -214,13 +218,64 @@ class GaussNN(ModelWrapper):
             learning_rate=self._model_params["learning_rate"],
             optimizer_type=self._model_params["optimizer_type"],
             train_epochs=self._model_params["train_epochs"],
-            earlystopping=False,
+            early_stop=False,
             evaluator=self._evaluator,
             save_checkpoints_dir=self._save_checkpoints_dir,
             tensorboard_logdir=self._save_tensorboard_logdir
         )
-        print(tf.trainable_variables)
         
+    def increment_init(self, **entity):
+        
+        # Phase 1. Load and transform Dataset -----------------------
+        train_dataset = self.preprocess(entity["train_dataset"])
+        val_dataset = self.preprocess(entity["val_dataset"])
+        train_dataset.update_features(self._feature_list, self._categorical_features)
+        val_dataset.update_features(self._feature_list, self._categorical_features)
+        train_dataset.build()
+        val_dataset.build()
+        # Phase 2. Load Feature Statistics, and Run -----------------------
+        statistic_gen = ExternalStatisticsGen(
+            filepath=os.path.join(self._save_statistics_dir, "statistics.pkl")
+        )
+        res = os.path.join(self._save_statistics_dir, "statistics.pkl")
+        statistics=statistic_gen.run()
+        # Phase 3. Create Transform and Network, and Run -----------------------
+        self._transform1 = CategoricalTransform(
+            statistics=statistics,
+            feature_names=self._categorical_features,
+            embed_size=self._model_params["embed_size"],
+        )
+        self._transform2 = RegNumericalTransform(
+            statistics=statistics,
+            feature_names=self._numerical_features
+        )
+        Loss = LossFunctionFactory.get_loss_function(func_name=self._loss_name)
+        Network = NetworkFactory.get_network(task_name=self._task_name)
+        self._network = Network(
+            categorical_features=self._categorical_features,
+            numerical_features=self._numerical_features,
+            task_name=self._task_name,
+            activation=self._model_params["activation"],
+            hidden_sizes=self._model_params["hidden_sizes"],
+            loss=Loss(label_name=train_dataset.target_names)
+        )
+        # Phase 4. Create Evaluator and Trainer ----------------------------
+        self._metric = entity["metric"]
+        metrics_wrapper = { 
+            self._metric.name: self._metric
+        }
+        self._trainer = IncrementalTrainer(
+            dataset=train_dataset,
+            transform_functions=[self._transform1.transform_fn, self._transform2.transform_fn],
+            train_fn=self._network.train_fn,
+            log_steps=self._model_params["log_steps"],
+            learning_rate=self._model_params["learning_rate"],
+            optimizer_type=self._model_params["optimizer_type"],
+            train_epochs=1,
+            save_checkpoints_dir=self._save_checkpoints_dir,
+            tensorboard_logdir=self._save_tensorboard_logdir
+        )
+
     def inference_init(self, **entity):
         """Initialize calculation graph and load 'tf.Variables' to graph for
         prediction mission.
@@ -231,15 +286,18 @@ class GaussNN(ModelWrapper):
         """
         assert(entity.get("val_dataset"))
 
+        # Phase 1. Load and transform Dataset -----------------------
         dataset = self.preprocess(entity["val_dataset"])
         dataset.update_features(self._feature_list, self._categorical_features)
         dataset.build()
 
+        # Phase 2. Load Feature Statistics, and Run -----------------------
         statistic_gen = ExternalStatisticsGen(
-            filepath=self._save_statistics_filepath + "statistics.pkl"
+            filepath=os.path.join(self._save_statistics_dir, "statistics.pkl")
         )
         statistics = statistic_gen.run()
 
+        # Phase 3. Create Transform and Network, and Run -----------------------
         self._transform1 = CategoricalTransform(
             statistics=statistics,
             feature_names=self._categorical_features,
@@ -256,16 +314,21 @@ class GaussNN(ModelWrapper):
             task_name=self._task_name,
             hidden_sizes=self._model_params["hidden_sizes"],
         )
+        # Phase 4. Create Predictor ----------------------------
         if not self._train_flag:
             self._evaluator = Predictor(
                 dataset=dataset,
                 transform_functions=[self._transform1.transform_fn, self._transform2.transform_fn],
                 eval_fn=self._network.eval_fn,
-                restore_checkpoint_dir=self._restore_checkpoint_dir,
+                restore_checkpoints_dir=self._restore_checkpoints_dir,
             )
 
     def train(self, **entity):
         self.train_init(**entity)
+        self._trainer.run()
+
+    def increment(self, **entity):
+        self.increment_init(**entity)
         self._trainer.run()
 
     def predict(self, **entity):
@@ -275,7 +338,7 @@ class GaussNN(ModelWrapper):
 
     def eval(self, **entity):
         if self._train_flag:
-            print("Evaluation result:", self._metrics.metrics_result)
+            print("Evaluation result:", self._metric.metrics_result)
             return self._metrics.metrics_result
         else:
             self.inference_init(**entity)
@@ -284,13 +347,14 @@ class GaussNN(ModelWrapper):
     def update_best_model(self):
         assert self._trainer is not None
 
-        if self._best_metrics_result is None or \
-            (self._metrics.metrics_result.result > self._best_metrics_result):
+        if self._best_metric_result is None or \
+            (self._metric.metric_result.result > self._best_metric_result):
 
             self._update_checkpoint()
             self._update_statistics()
+            # TODO: update tensorboard
             self._best_model_params = copy.deepcopy(self._model_params)
-            self._best_metrics_result = self._metrics.metrics_result.result
+            self._best_metric_result = self._metric.metric_result.result
             self._best_feature_list = copy.deepcopy(self._feature_list)
             self._best_categorical_features = copy.deepcopy(self._categorical_features)
             self._best_numerical_features = copy.deepcopy(self._numerical_features)
@@ -314,8 +378,8 @@ class GaussNN(ModelWrapper):
 
     def _create_folders(self):
         path_attrs = [
-            self._save_statistics_filepath, self._save_checkpoints_dir, 
-            self._restore_checkpoint_dir, self._save_tensorboard_logdir,
+            self._save_statistics_dir, self._save_checkpoints_dir, 
+            self._restore_checkpoints_dir, self._save_tensorboard_logdir,
         ]
         for path in path_attrs:
             if not os.path.isdir(path):
@@ -336,22 +400,26 @@ class GaussNN(ModelWrapper):
         # TODO: implement latest ckpt to replace tf
         import tensorflow as tf
 
-        if os.path.isdir(self._restore_checkpoint_dir):
-            shutil.rmtree(self._restore_checkpoint_dir)
-        os.mkdir(self._restore_checkpoint_dir)
+        if len(os.listdir(self._save_checkpoints_dir)) == 0:
+            raise TypeError("checkpoint has not been found in folder <{dir}>".format(
+                dir=self._save_checkpoints_dir
+            ))
+        if os.path.isdir(self._restore_checkpoints_dir):
+            shutil.rmtree(self._restore_checkpoints_dir)
+        os.mkdir(self._restore_checkpoints_dir)
         prefix = tf.train.latest_checkpoint(self._save_checkpoints_dir) + "*"
         os.system("cp {ckpt_dir} {target_dir}".format(
             ckpt_dir=self._save_checkpoints_dir + "checkpoint",
-            target_dir=self._restore_checkpoint_dir
+            target_dir=self._restore_checkpoints_dir
         ))
-        os.system("cp {ckpt} {target_dir}".format(
+        os.system("cp {ckpt} {target_dir}".format( 
             ckpt=prefix,
-            target_dir=self._restore_checkpoint_dir
+            target_dir=self._restore_checkpoints_dir
         ))
 
     def _update_statistics(self):
         self._statistics.save_to_file(
-            filepath=self._save_statistics_filepath+"statistics.pkl"
+            filepath=os.path.join(self._save_statistics_dir, "statistics.pkl")
         )
 
     def initialize(self):

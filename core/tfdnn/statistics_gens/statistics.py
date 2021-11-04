@@ -6,7 +6,6 @@
 from __future__ import division
 from __future__ import absolute_import
 
-import os
 import pickle
 import numpy as np
 
@@ -118,7 +117,7 @@ class Statistics(object):
         return self._stats
 
     def save_to_file(self, filepath):
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        # os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, "wb") as f:
             pickle.dump(self._stats, f)
 
