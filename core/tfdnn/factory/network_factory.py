@@ -4,20 +4,24 @@
 # Authors: citic-lab
 
 from core.tfdnn.networks.mlp_network import (
-    MlpRegNetwork,
-    MlpClsNetwork
+    MlpBinaryClsNetwork,
+    MlpMultiClsNetwork,
+    MlpRegNetwork
 )
 
 
 class NetworkFactory():
 
-    CLS = "binary_classification"
+    BinaryCLS = "binary_classification"
+    MulCLS = "multiclass_classification"
     REG = "regression"
 
     @staticmethod
     def get_network(task_name):
         if task_name == NetworkFactory.CLS:
-            return MlpClsNetwork
+            return MlpBinaryClsNetwork
+        elif task_name == NetworkFactory.MulCLS:
+            return MlpMultiClsNetwork
         elif task_name == NetworkFactory.REG:
             return MlpRegNetwork
         else:

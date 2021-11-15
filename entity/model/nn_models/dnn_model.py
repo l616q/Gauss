@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2021, Citic-Lab. All rights reserved.
 # Authors: citic-lab
-# 
+#
 import os
 import gc
 import copy
@@ -10,7 +10,7 @@ import shutil
 
 from entity.model.model import ModelWrapper
 from entity.dataset.tf_plain_dataset import TFPlainDataset
-from entity.feature_configuration.feature_config import FeatureConf 
+from entity.feature_configuration.feature_config import FeatureConf
 from core.tfdnn.trainers.trainer import (
     Trainer,
     IncrementalTrainer
@@ -27,7 +27,7 @@ from core.tfdnn.statistics_gens.external_statistics_gen import ExternalStatistic
 from utils.base import mkdir
 from utils.feature_name_exec import generate_feature_list
 from core.tfdnn.factory.network_factory import NetworkFactory
-from core.tfdnn.factory.loss_factory import LossFunctionFactory 
+from core.tfdnn.factory.loss_factory import LossFunctionFactory
 
 
 class GaussNN(ModelWrapper):
@@ -35,7 +35,7 @@ class GaussNN(ModelWrapper):
 
     Model wrapper wrapped a neural network model which can be used in training 
     or predicting. When training a model.
-    
+
     Parameters:
     --------------
     model_root_path:
@@ -57,14 +57,16 @@ class GaussNN(ModelWrapper):
             init_model_root=params["init_model_root"],
             metric_eval_used_flag=params["metric_eval_used_flag"],
             use_weight_flag=params["use_weight_flag"],
-            decay_rate=params["decay_rate"] if params.get("decay_rate")\
-                else None
-            )
+            decay_rate=params["decay_rate"] if params.get("decay_rate")
+            else None
+        )
 
         self._loss_name = params["loss_func"]
         self.model_file_name = self._model_root_path + "/" + self.name + ".txt"
-        self.model_config_file_name = self._model_config_root + "/" + self.name + ".model_conf.yaml"
-        self.feature_config_file_name = self._feature_config_root + "/" + self.name + ".final.yaml"
+        self.model_config_file_name = self._model_config_root + \
+            "/" + self.name + ".model_conf.yaml"
+        self.feature_config_file_name = self._feature_config_root + \
+            "/" + self.name + ".final.yaml"
 
         self._save_statistics_dir = os.path.join(
             self._model_root_path, "statistics")
@@ -74,7 +76,7 @@ class GaussNN(ModelWrapper):
             self._model_root_path, "restore_checkpoint")
         self._save_tensorboard_logdir = os.path.join(
             self._model_root_path, "tensorboard_logdir")
-        
+
         self._model_params = {}
         self._categorical_features = None
         self._best_categorical_features = None
@@ -92,10 +94,9 @@ class GaussNN(ModelWrapper):
         self._trainer = None
 
         self._create_folders()
-        
+
     def __repr__(self):
         pass
-    
 
     @property
     def val_metric(self):
@@ -104,8 +105,7 @@ class GaussNN(ModelWrapper):
     @property
     def val_best_metric_result(self):
         return self._metric.metric_result
-    
-    
+
     def update_feature_conf(self, feature_conf):
         """Select features using in current model before 'dataset.build()'.
 
@@ -130,7 +130,7 @@ class GaussNN(ModelWrapper):
         else:
             raise AttributeError(
                 "feature_conf can only support `dict` or `FeatureConf`."
-                )
+            )
         categorical_features, numerical_features = [], []
         for name, info in configs.items():
             if name in self._feature_list:
@@ -140,7 +140,7 @@ class GaussNN(ModelWrapper):
                     categorical_features.append(name)
 
         return categorical_features, numerical_features
-        
+
     def train_init(self, **entity):
         """Initialize modules using for training a model and build 
         'Calculation Graph' by tensorflow.
@@ -159,17 +159,25 @@ class GaussNN(ModelWrapper):
         metrics: Metrics, judgement scores for evaluate a model.
         """
         self._reset_tf_graph()
-        
+
         # Phase 1. Load and transform Dataset -----------------------
         train_dataset = self.preprocess(entity["train_dataset"])
         val_dataset = self.preprocess(entity["val_dataset"])
 
-        train_dataset.update_features(self._feature_list, self._categorical_features)
-        val_dataset.update_features(self._feature_list, self._categorical_features)
+        train_dataset.update_features(
+            self._feature_list, self._categorical_features)
+        val_dataset.update_features(
+            self._feature_list, self._categorical_features)
+
         train_dataset.build()
         val_dataset.build()
-        train_dataset.update_dataset_parameters(self._model_params["batch_size"]) 
-        val_dataset.update_dataset_parameters(self._model_params["batch_size"])
+        
+        train_dataset.update_dataset_parameters(
+            self._model_params["batch_size"]
+            )
+        val_dataset.update_dataset_parameters(
+            self._model_params["batch_size"]
+            )
 
         # Phase 2. Create Feature Statistics, and Run -----------------------
         statistics_gen = DatasetStatisticsGen(
@@ -200,18 +208,20 @@ class GaussNN(ModelWrapper):
         )
         # Phase 4. Create Evaluator and Trainer ----------------------------
         self._metric = entity["metric"]
-        metrics_wrapper = { 
+        metrics_wrapper = {
             self._metric.name: self._metric
         }
         self._evaluator = Evaluator(
             dataset=val_dataset,
-            transform_functions=[self._transform1.transform_fn, self._transform2.transform_fn],
+            transform_functions=[
+                self._transform1.transform_fn, self._transform2.transform_fn],
             eval_fn=self._network.eval_fn,
             metrics=metrics_wrapper,
         )
         self._trainer = Trainer(
             dataset=train_dataset,
-            transform_functions=[self._transform1.transform_fn, self._transform2.transform_fn],
+            transform_functions=[
+                self._transform1.transform_fn, self._transform2.transform_fn],
             train_fn=self._network.train_fn,
             validate_steps=self._model_params["validate_steps"],
             log_steps=self._model_params["log_steps"],
@@ -223,14 +233,16 @@ class GaussNN(ModelWrapper):
             save_checkpoints_dir=self._save_checkpoints_dir,
             tensorboard_logdir=self._save_tensorboard_logdir
         )
-        
+
     def increment_init(self, **entity):
-        
+
         # Phase 1. Load and transform Dataset -----------------------
         train_dataset = self.preprocess(entity["train_dataset"])
         val_dataset = self.preprocess(entity["val_dataset"])
-        train_dataset.update_features(self._feature_list, self._categorical_features)
-        val_dataset.update_features(self._feature_list, self._categorical_features)
+        train_dataset.update_features(
+            self._feature_list, self._categorical_features)
+        val_dataset.update_features(
+            self._feature_list, self._categorical_features)
         train_dataset.build()
         val_dataset.build()
         # Phase 2. Load Feature Statistics, and Run -----------------------
@@ -238,7 +250,7 @@ class GaussNN(ModelWrapper):
             filepath=os.path.join(self._save_statistics_dir, "statistics.pkl")
         )
         res = os.path.join(self._save_statistics_dir, "statistics.pkl")
-        statistics=statistic_gen.run()
+        statistics = statistic_gen.run()
         # Phase 3. Create Transform and Network, and Run -----------------------
         self._transform1 = CategoricalTransform(
             statistics=statistics,
@@ -261,12 +273,13 @@ class GaussNN(ModelWrapper):
         )
         # Phase 4. Create Evaluator and Trainer ----------------------------
         self._metric = entity["metric"]
-        metrics_wrapper = { 
+        metrics_wrapper = {
             self._metric.name: self._metric
         }
         self._trainer = IncrementalTrainer(
             dataset=train_dataset,
-            transform_functions=[self._transform1.transform_fn, self._transform2.transform_fn],
+            transform_functions=[
+                self._transform1.transform_fn, self._transform2.transform_fn],
             train_fn=self._network.train_fn,
             log_steps=self._model_params["log_steps"],
             learning_rate=self._model_params["learning_rate"],
@@ -279,7 +292,7 @@ class GaussNN(ModelWrapper):
     def inference_init(self, **entity):
         """Initialize calculation graph and load 'tf.Variables' to graph for
         prediction mission.
-        
+
         Activate only in predict mission. Data statistic information from current 
         best performance existed model will be loaded. And Checkpoint of same model
         will be load to 'tf.Graph'
@@ -318,7 +331,8 @@ class GaussNN(ModelWrapper):
         if not self._train_flag:
             self._evaluator = Predictor(
                 dataset=dataset,
-                transform_functions=[self._transform1.transform_fn, self._transform2.transform_fn],
+                transform_functions=[
+                    self._transform1.transform_fn, self._transform2.transform_fn],
                 eval_fn=self._network.eval_fn,
                 restore_checkpoints_dir=self._restore_checkpoints_dir,
             )
@@ -348,7 +362,7 @@ class GaussNN(ModelWrapper):
         assert self._trainer is not None
 
         if self._best_metric_result is None or \
-            (self._metric.metric_result.result > self._best_metric_result):
+                (self._metric.metric_result.result > self._best_metric_result):
 
             self._update_checkpoint()
             self._update_statistics()
@@ -356,13 +370,16 @@ class GaussNN(ModelWrapper):
             self._best_model_params = copy.deepcopy(self._model_params)
             self._best_metric_result = self._metric.metric_result.result
             self._best_feature_list = copy.deepcopy(self._feature_list)
-            self._best_categorical_features = copy.deepcopy(self._categorical_features)
-            self._best_numerical_features = copy.deepcopy(self._numerical_features)
+            self._best_categorical_features = copy.deepcopy(
+                self._categorical_features)
+            self._best_numerical_features = copy.deepcopy(
+                self._numerical_features)
 
     def set_best_model(self):
         self._model_params = copy.deepcopy(self._best_model_params)
         self._feature_list = copy.deepcopy(self._best_feature_list)
-        self._categorical_features = copy.deepcopy(self._best_categorical_features)
+        self._categorical_features = copy.deepcopy(
+            self._best_categorical_features)
         self._numerical_features = copy.deepcopy(self._best_numerical_features)
 
     def preprocess(self, dataset):
@@ -378,7 +395,7 @@ class GaussNN(ModelWrapper):
 
     def _create_folders(self):
         path_attrs = [
-            self._save_statistics_dir, self._save_checkpoints_dir, 
+            self._save_statistics_dir, self._save_checkpoints_dir,
             self._restore_checkpoints_dir, self._save_tensorboard_logdir,
         ]
         for path in path_attrs:
@@ -388,7 +405,7 @@ class GaussNN(ModelWrapper):
     def _reset_trail(self):
         attrs = [
             "_model_params", "_feature_conf", "_feature_list", "_categorical_features"
-            "_numerical_features", "_statistics_gen", "_statistics", "_transform1", 
+            "_numerical_features", "_statistics_gen", "_statistics", "_transform1",
             "_transform2", "_network", "_evaluator", "_trainer"
         ]
         for attr in attrs:
@@ -412,7 +429,7 @@ class GaussNN(ModelWrapper):
             ckpt_dir=self._save_checkpoints_dir + "checkpoint",
             target_dir=self._restore_checkpoints_dir
         ))
-        os.system("cp {ckpt} {target_dir}".format( 
+        os.system("cp {ckpt} {target_dir}".format(
             ckpt=prefix,
             target_dir=self._restore_checkpoints_dir
         ))
@@ -439,7 +456,7 @@ class GaussNN(ModelWrapper):
         pass
 
     def get_val_loss(self):
-        pass     
+        pass
 
     def _train_preprocess(self):
         pass
@@ -461,7 +478,7 @@ class GaussNN(ModelWrapper):
 
     def _binary_train(self):
         pass
-    
+
     def _multiclass_train(self):
         pass
 

@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from core.tfdnn.losses.classification_losses import CrossEntropyLoss
+from core.tfdnn.losses.classification_losses import (
+    BinaryCrossEntropyLoss,
+    SoftmaxCrossEntropyLoss
+    )
 from core.tfdnn.losses.regression_losses import (
     MeanAbsoluteErrorLoss, 
     MeanSquareErrorLoss,
@@ -13,7 +16,9 @@ class LossFunctionFactory():
     def get_loss_function(func_name):
         # TODO: handle Multiclass and Regression tasks. 
         if func_name == "BinaryCrossEntropy":
-            return CrossEntropyLoss
+            return BinaryCrossEntropyLoss
+        elif func_name == "Softmax":
+            return SoftmaxCrossEntropyLoss
         elif func_name == "MeanSquareError":
             return MeanSquareErrorLoss
         elif func_name == "MeanAbsoluteError":

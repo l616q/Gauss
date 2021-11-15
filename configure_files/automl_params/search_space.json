@@ -111,7 +111,45 @@
                   "_value": [20, 50, 100]
             }
       },
-      "dnn_cls":{
+      "dnn_binary_cls":{
+            "batch_size": {
+                  "_type": "choice",
+                  "_value": [32, 64, 128]
+            },
+            "embed_size": {
+                  "_type": "choice",
+                  "_value": [1, 2, 4]
+            },
+            "activation":{
+                  "_type":"choice",
+                  "_value":["relu", "leaky_relu", "selu"]
+            },
+            "hidden_sizes": {
+                  "_type": "choice",
+                  "_value": [[1024, 512, 256], [512, 256, 128], [256, 128, 64], [128, 64, 32]]
+            },
+            "learning_rate": {
+                  "_type": "uniform",
+                  "_value": [0.01, 0.0001]
+            },
+            "optimizer_type": {
+                  "_type": "choice",
+                  "_value": ["sgd", "adam", "lazy_adam"]
+            },
+            "loss_func": {
+                  "_type": "choice",
+                  "_value": ["BinaryCrossEntropy"]
+            },
+            "train_epochs": {
+                  "_type": "choice",
+                  "_value": [20, 50, 100]
+            },
+            "early_stop": {
+                  "_type": "choice",
+                  "_value": [true, false]
+            }
+      },
+      "dnn_multi_cls":{
             "batch_size": {
                   "_type": "choice",
                   "_value": [32, 64, 128]
