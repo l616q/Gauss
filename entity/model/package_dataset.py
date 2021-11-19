@@ -35,6 +35,7 @@ class PackageDataset:
             data = dataset.feature_choose(feature_list, use_index_flag=False)
             target = dataset.get_dataset().target
 
+            # feature name
             data_package = Bunch(
                 data=data,
                 target=target,
@@ -65,6 +66,7 @@ class PackageDataset:
             )
         )
 
+        # train_flag
         if train_flag:
             return self.__load_dataset(
                 self,

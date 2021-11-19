@@ -32,7 +32,6 @@ class PlaintextDataset(BaseDataset):
     Features of current dataset can be eliminated by `feature_choose()` function, both index and
     feature name are accepted.
     """
-
     def __init__(self, **params):
         """
         Two kinds of raw data supported:
@@ -83,12 +82,17 @@ class PlaintextDataset(BaseDataset):
 
         if self._name == ConstantValues.train_dataset or self._name == ConstantValues.val_dataset:
             self.__use_weight_flag = params[ConstantValues.use_weight_flag]
+            assert isinstance(self.__use_weight_flag, bool), "This value should be bool type, but get {}".format(
+                self.__use_weight_flag)
+
             self.__dataset_weight_dict = params[ConstantValues.dataset_weight_dict]
             if params.get(ConstantValues.weight_column_name):
                 assert isinstance(params[ConstantValues.weight_column_name], list)
                 self._weight_column_names = params[ConstantValues.weight_column_name]
             else:
                 self._weight_column_names = None
+        else:
+            self.__use_weight_flag = False
 
         # mark start point of validation set in all dataset, if just one data file offers, start point will calculate
         # by train_test_split = 0.3, and if train data file and validation file offer, start point will calculate
@@ -177,9 +181,12 @@ class PlaintextDataset(BaseDataset):
             self._bunch.data, self._bunch.target = shuffle(self._bunch.data, self._bunch.target)
             self.__set_weight()
         elif self._name == ConstantValues.increment_dataset:
+            self.__set_proportion()
             self._bunch.data, self._bunch.target = shuffle(self._bunch.data, self._bunch.target)
         else:
             assert self._name == ConstantValues.infer_dataset
+            self._bunch.label_class = None
+            self._bunch.proportion = None
         return self._bunch
 
     def __set_proportion(self):
@@ -196,7 +203,6 @@ class PlaintextDataset(BaseDataset):
         count = 0
         proportion_dict = {}
         label_class_dict = {}
-
         for index, value in target[target_names].value_counts().iteritems():
             proportion_dict[index] = value
             count += 1
@@ -268,19 +274,21 @@ class PlaintextDataset(BaseDataset):
     def load_csv(self):
         data = reduce_data(data_path=self._data_path,
                            column_name_flag=self._column_name_flag)
-
-        if bool(self._weight_column_names) and bool(self.__dataset_weight_dict):
-            raise ValueError("Just one weight setting can be set.")
+        if self._name == ConstantValues.train_dataset:
+            if bool(self._weight_column_names) and bool(self.__dataset_weight_dict):
+                raise ValueError("Just one weight setting can be set.")
 
         if self._column_name_flag:
-            if self._weight_column_names:
+            if self.__use_weight_flag:
+                if self._weight_column_names:
+                    for weight_name in self._weight_column_names:
+                        if weight_name not in data.columns:
+                            raise ValueError("Column: {} doesn't exist in dataset file.".format(self._weight_column_names))
 
-                for weight_name in self._weight_column_names:
-                    if weight_name not in data.columns:
-                        raise ValueError("Column: {} doesn't exist in dataset file.".format(self._weight_column_names))
-
-                weight = data[self._weight_column_names]
-                data.drop(self._weight_column_names, axis=1, inplace=True)
+                    weight = data[self._weight_column_names]
+                    data.drop(self._weight_column_names, axis=1, inplace=True)
+                else:
+                    weight = None
             else:
                 weight = None
 
@@ -298,7 +306,7 @@ class PlaintextDataset(BaseDataset):
             target_columns = []
             self.__column_index = list(data.columns)
 
-            if self._weight_column_names:
+            if self.__use_weight_flag:
                 if self._weight_column_names:
                     weight_columns = []
                     for weight_index in self._weight_column_names:
@@ -359,9 +367,9 @@ class PlaintextDataset(BaseDataset):
         data, target = load_svmlight_file(self._data_path)
         data = pd.DataFrame(data.toarray())
         target = pd.DataFrame(target)
-
-        if bool(self._weight_column_names) and bool(self.__dataset_weight_dict):
-            raise ValueError("Just one weight setting can be set.")
+        if self._name == ConstantValues.train_dataset:
+            if bool(self._weight_column_names) and bool(self.__dataset_weight_dict):
+                raise ValueError("Just one weight setting can be set.")
 
         if self._target_names is not None:
             raise ValueError("Value: target names should be None when loading libsvm file.")
@@ -372,7 +380,7 @@ class PlaintextDataset(BaseDataset):
             target_columns = list(target.columns)
             self.__column_index = list(data.columns)
 
-            if self._weight_column_names:
+            if self.__use_weight_flag:
                 if self._weight_column_names:
                     weight_columns = []
                     for weight_index in self._weight_column_names:
@@ -384,6 +392,11 @@ class PlaintextDataset(BaseDataset):
                     weight = None
             else:
                 weight = None
+
+            if self.__dataset_weight_dict:
+                for index in self.__dataset_weight_dict.copy().keys():
+                    self.__dataset_weight_dict[self.__column_index[index]] = self.__dataset_weight_dict[index]
+                    self.__dataset_weight_dict.pop(index)
 
             if self._name in [ConstantValues.train_dataset,
                               ConstantValues.val_dataset,
@@ -440,8 +453,9 @@ class PlaintextDataset(BaseDataset):
             target = list(map(int, target))
             target = pd.DataFrame(np.asarray(target, dtype=int))
 
-            if bool(self._weight_column_names) and bool(self.__dataset_weight_dict):
-                raise ValueError("Just one weight setting can be set.")
+            if self._name == ConstantValues.train_dataset:
+                if bool(self._weight_column_names) and bool(self.__dataset_weight_dict):
+                    raise ValueError("Just one weight setting can be set.")
 
             if self._target_names is not None:
                 raise ValueError("Value: target names should be None when loading libsvm file.")
@@ -452,7 +466,7 @@ class PlaintextDataset(BaseDataset):
                 target_columns = list(target.columns)
                 self.__column_index = list(data.columns)
 
-                if self._weight_column_names:
+                if self.__use_weight_flag:
                     if self._weight_column_names:
                         weight_columns = []
                         for weight_index in self._weight_column_names:
@@ -464,6 +478,11 @@ class PlaintextDataset(BaseDataset):
                         weight = None
                 else:
                     weight = None
+
+                if self.__dataset_weight_dict:
+                    for index in self.__dataset_weight_dict.copy().keys():
+                        self.__dataset_weight_dict[self.__column_index[index]] = self.__dataset_weight_dict[index]
+                        self.__dataset_weight_dict.pop(index)
 
                 if self._name in [ConstantValues.train_dataset,
                                   ConstantValues.val_dataset,

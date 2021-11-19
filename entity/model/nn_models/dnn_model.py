@@ -30,6 +30,7 @@ from core.tfdnn.factory.network_factory import NetworkFactory
 from core.tfdnn.factory.loss_factory import LossFunctionFactory
 
 
+
 class GaussNN(ModelWrapper):
     """Multi layer perceptron neural network wrapper.
 

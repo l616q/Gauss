@@ -20,7 +20,7 @@ user_feature = "/home/liangqian/Gauss/test_dataset/feature_conf.yaml"
 environ_configure = EnvironmentConfigure(work_root="/home/liangqian/Gauss/experiments")
 
 pipeline_dict = Bunch()
-# ["udf", "auto", "multi_udf"]
+# ["udf", "auto", "dispatch_auto", "dispatch_udf"]
 pipeline_dict.mode = "udf"
 # initial model path, optional: str or None, and it's different from increment model setting.
 # This is used to train a better model instead of increment.
@@ -51,7 +51,7 @@ pipeline_dict.target_names = ["deposit"]
 pipeline_dict.use_weight_flag = False
 # weight_column_name is a string value, which means a specific column names weight_column_name in a csv file or last column in txt or libsvm
 # using as sample weight. this value should be set "-1" if dataset file type is libsvm or txt.
-pipeline_dict.weight_column_name = None
+pipeline_dict.weight_column_name = ["dataset_weight"]
 # format: {"label_name": {label_value: weight_value, ...}}, if no label value, choose target_A, target_B, ... instead.
 # eg. {"target_A": {1: 1.9, -1: 1}}, {-1: {1: 1.9, -1: 1}}, {-2: {"yes": 1.9, "no": 1}}
 # this interface will be reserved because anyone who is good at weight setting could use it conveniently
@@ -61,17 +61,23 @@ pipeline_dict.train_column_name_flag = True
 pipeline_dict.train_data_path = "/home/liangqian/文档/公开数据集/bank/bank.csv"
 pipeline_dict.val_column_name_flag = True
 pipeline_dict.val_data_path = None
-pipeline_dict.feature_configure_path = "/home/liangqian/文档/公开数据集/bank/bank_skip.yaml"
+pipeline_dict.feature_configure_path = "/home/liangqian/文档/公开数据集/bank/bank.yaml"
 pipeline_dict.dataset_name = "plaindataset"
 pipeline_dict.model_zoo = ["lightgbm"]
-pipeline_dict.data_clear_flag = True
-pipeline_dict.feature_generator_flag = True
+pipeline_dict.data_clear_flag = False
+pipeline_dict.feature_generator_flag = False
 pipeline_dict.unsupervised_feature_selector_flag = False
 pipeline_dict.supervised_feature_selector_flag = False
+# pipeline_dict.data_clear_flag = [True, False]
+# pipeline_dict.feature_generator_flag = [True, False]
+# pipeline_dict.unsupervised_feature_selector_flag = [True, False]
+# pipeline_dict.supervised_feature_selector_flag = [True, False]
 user_config_path = environ_configure.work_root + "/train_user_config.yaml"
 yaml_write(yaml_dict=dict(pipeline_dict), yaml_file=user_config_path)
 
 system_config_path = "/home/liangqian/Gauss/configure_files/system_config/system_config.yaml"
+
+
 # --------------- test block end ---------------
 
 
@@ -83,7 +89,9 @@ def main(user_configure_path=user_config_path, system_configure_path=system_conf
     system_configure = Bunch(**system_configure)
 
     if user_configure.mode == "auto":
-        model_graph = AutoModelingGraph(name="auto", **user_configure)
+        model_graph = AutoModelingGraph(name="auto",
+                                        user_configure=user_configure,
+                                        system_configure=system_configure)
 
         model_graph.run()
     elif user_configure.mode == "udf":

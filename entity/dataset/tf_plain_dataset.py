@@ -7,7 +7,8 @@ import tensorflow as tf
 from entity.dataset.base_dataset import BaseDataset
 from entity.dataset.plain_dataset import PlaintextDataset
 
-pd.options.mode.chained_assignment = None # default = "warn"
+pd.options.mode.chained_assignment = None  # default = "warn"
+
 
 class TFPlainDataset(BaseDataset):
     """Gauss_nn Dataset wrapper 
@@ -68,7 +69,6 @@ class TFPlainDataset(BaseDataset):
             return str(self._df_dataset.head())
         else:
             return str(self._df_dataset[self._selected_features].head())
-
 
     def update_features(self, features: list, cate_fea):
         """update private attribute selected_features, which are actually
@@ -133,13 +133,12 @@ class TFPlainDataset(BaseDataset):
 
     @property
     def shape(self):
-        ori_shape = self._df_dataset.shape 
-        return (ori_shape[0], ori_shape[1]+1)
-        
+        ori_shape = self._df_dataset.shape
+        return (ori_shape[0], ori_shape[1] + 1)
+
     @property
     def info(self):
         return self._df_dataset.info()
-
 
     def _build_dataset(self):
         dataset = self._filter_feature(self._df_dataset)
@@ -191,7 +190,7 @@ class TFPlainDataset(BaseDataset):
         y = dataset.get_dataset().target
         dataset = pd.concat((X, y), axis=1)
         return dataset
-    
+
     def _dim_expand(self, dataset: pd.DataFrame) -> dict:
         """normalize data dimensions for pipeline.
 
@@ -206,13 +205,13 @@ class TFPlainDataset(BaseDataset):
 
     def feature_choose(self):
         pass
-    
+
     def get_dataset(self):
         pass
 
     def load_data(self):
         pass
-    
+
     def split(self):
         pass
 

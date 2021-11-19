@@ -29,8 +29,8 @@ logger.info("work_root: %s", pipeline_dict.work_root)
 # optional: ["libsvm", "txt", "csv"]
 pipeline_dict.data_file_type = "csv"
 # increment dataset
-pipeline_dict.init_work_root = "/home/liangqian/Gauss/experiments/vfMd7U"
-pipeline_dict.train_data_path = "/home/liangqian/文档/公开数据集/test_o/valid.csv"
+pipeline_dict.init_work_root = "/home/liangqian/Gauss/experiments/5tbK7n"
+pipeline_dict.train_data_path = "/home/liangqian/文档/公开数据集/bank/bank.csv"
 # user must set a specific model for increment
 pipeline_dict.model_zoo = ["lightgbm"]
 pipeline_dict.increment_column_name_flag = True
