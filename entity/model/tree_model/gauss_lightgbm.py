@@ -399,12 +399,6 @@ class GaussLightgbm(ModelWrapper):
         :param train_dataset: new boosting train dataset.
         :return: None
         """
-        """
-        This method is used to train lightgbm (booster)
-        model in binary classification.
-        :param train_dataset: new boosting train dataset.
-        :return: None
-        """
         decay_rate = self._decay_rate
         init_model_path = os.path.join(self._model_save_root, self._model_file_name)
         assert os.path.isfile(init_model_path)
@@ -437,12 +431,6 @@ class GaussLightgbm(ModelWrapper):
         """
         This method is used to train lightgbm (booster)
         model in regression.
-        :param train_dataset: new boosting train dataset.
-        :return: None
-        """
-        """
-        This method is used to train lightgbm (booster)
-        model in binary classification.
         :param train_dataset: new boosting train dataset.
         :return: None
         """
@@ -599,6 +587,7 @@ class GaussLightgbm(ModelWrapper):
                 get_current_memory_gb()["memory_usage"]
             )
         )
+
         # 默认生成的为预测值的概率值，传入metric之后再处理.
         val_y_pred = self._model.predict(
             eval_data

@@ -70,8 +70,8 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
 
         self._optimal_metrics = None
 
-        self.__set_default_params()
-        self.__set_search_space()
+        self.__load_topk_default_params()
+        self.__load_topk_search_space()
 
     def __train_selector(self, **entity):
         assert "train_dataset" in entity.keys()
@@ -246,7 +246,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         self._final_feature_names = model.feature_list
 
         if isinstance(train_dataset.get_dataset().data, pd.DataFrame):
-            self.final_configure_generation()
+            self.__generate_final_configure()
         else:
             raise TypeError(
                 "Training data must be type: pd.Dataframe but get {} instead".format(
@@ -259,7 +259,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
     def _predict_run(self, **entity):
         pass
 
-    def final_configure_generation(self):
+    def __generate_final_configure(self):
         """
         Write configure file
         :return:
@@ -281,7 +281,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         assert self._search_space is not None
         return self._search_space
 
-    def __set_search_space(self):
+    def __load_topk_search_space(self):
         """
         Read search space file.
         :return:
@@ -318,7 +318,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         """
         return self._default_parameters
 
-    def __set_default_params(self):
+    def __load_topk_default_params(self):
         """
         Read default parameters.
         :return: None

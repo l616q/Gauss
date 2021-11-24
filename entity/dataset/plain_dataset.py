@@ -443,8 +443,7 @@ class PlaintextDataset(BaseDataset):
 
                 if weight is not None:
                     for index, weight_name in enumerate(weight.columns):
-                        weight.rename(columns={weight_name: target_names[index]},
-                                      inplace=True)
+                        weight = weight.rename(columns={weight_name: target_names[index]})
 
                 if self.__dataset_weight_dict:
                     for weight_index in self.__dataset_weight_dict.copy().keys():
