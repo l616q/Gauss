@@ -1,4 +1,6 @@
 import pandas as pd
+from sklearn.datasets import load_svmlight_file
 
-df = pd.read_csv("/home/liangqian/文档/公开数据集/bank/bank.csv", nrows=10)
-print(df)
+data, target = load_svmlight_file("/home/liangqian/文档/公开数据集/a9a/test.libsvm")
+data = pd.DataFrame(data.toarray())
+print(data)

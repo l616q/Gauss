@@ -73,7 +73,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         self.__load_topk_default_params()
         self.__load_topk_search_space()
 
-    def __train_selector(self, **entity):
+    def __select_through_tree(self, **entity):
         assert "train_dataset" in entity.keys()
         assert "val_dataset" in entity.keys()
 
@@ -125,7 +125,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         assert "selector_auto_ml" in entity.keys()
         assert "selector_metric" in entity.keys()
 
-        feature_importance_pair = self.__train_selector(**entity)
+        feature_importance_pair = self.__select_through_tree(**entity)
 
         train_dataset = entity[ConstantValues.train_dataset]
         val_dataset = entity[ConstantValues.val_dataset]
