@@ -173,8 +173,10 @@ class PlaintextDataset(BaseDataset):
             else:
                 self._target_names = train_target_index
                 self._weight_column_names = train_weight_index
+
                 if self._bunch is None:
                     self._bunch = Bunch()
+
                 self._bunch.proportion = train_dataset.get_dataset().proportion
                 self.__load_data_from_path()
 
@@ -468,16 +470,16 @@ class PlaintextDataset(BaseDataset):
         return data, target, feature_names, target_names, weight
 
     def load_libsvm(self):
-        data, target = load_svmlight_file(self._data_path)
-        data = pd.DataFrame(data.toarray())
-        print(data)
-        target = pd.DataFrame(target)
         if self._name == ConstantValues.train_dataset:
             if bool(self._weight_column_names) and bool(self.__dataset_weight_dict):
                 raise ValueError("Just one weight setting can be set.")
 
         if self._target_names is not None:
             raise ValueError("Value: target names should be None when loading libsvm file.")
+
+        data, target = load_svmlight_file(self._data_path, multilabel=True)
+        data = pd.DataFrame(data.toarray())
+        target = pd.DataFrame(target)
 
         if self._column_name_flag:
             raise ValueError("Value: column name flag should be false when loading libsvm file.")

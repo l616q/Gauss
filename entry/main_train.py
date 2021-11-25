@@ -45,21 +45,21 @@ pipeline_dict.metric_name = "binary_f1"
 # if None, default loss will be chosen.
 pipeline_dict.loss_name = None
 # optional: ["libsvm", "txt", "csv"]
-pipeline_dict.data_file_type = "csv"
+pipeline_dict.data_file_type = "libsvm"
 # pipeline do not need to get target names in libsvm and txt file.
-pipeline_dict.target_names = [-2]
+pipeline_dict.target_names = None
 pipeline_dict.use_weight_flag = True
 # weight_column_name is a string value, which means a specific column names weight_column_name in a csv file or last column in txt or libsvm
 # using as sample weight. this value should be set "-1" if dataset file type is libsvm or txt.
-pipeline_dict.weight_column_name = [-1]
+pipeline_dict.weight_column_name = None
 # format: {"label_name": {label_value: weight_value, ...}}, if no label value, choose target_A, target_B, ... instead.
 # eg. {"target_A": {1: 1.9, -1: 1}}, {-1: {1: 1.9, -1: 1}}, {-2: {"yes": 1.9, "no": 1}}
 # this interface will be reserved because anyone who is good at weight setting could use it conveniently
 # this interface could be set False permanently if it doesn't need.
 pipeline_dict.dataset_weight_dict = None
 pipeline_dict.train_column_name_flag = False
-pipeline_dict.train_data_path = "/home/liangqian/文档/公开数据集/bank/bank_val.csv"
-pipeline_dict.val_data_path = "/home/liangqian/文档/公开数据集/bank/bank_val.csv"
+pipeline_dict.train_data_path = "/home/liangqian/文档/公开数据集/a9a/a9a"
+pipeline_dict.val_data_path = "/home/liangqian/文档/公开数据集/a9a/a9a.t"
 # if column name flag is None, feature_configure_path should be None.
 pipeline_dict.feature_configure_path = None
 pipeline_dict.model_zoo = ["lightgbm", "xgboost"]
