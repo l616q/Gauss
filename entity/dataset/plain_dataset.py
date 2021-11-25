@@ -83,10 +83,13 @@ class PlaintextDataset(BaseDataset):
         self._default_print_size = 5
         self._bunch = None
 
+        if self._name == ConstantValues.val_dataset:
+            self._column_name_flag = False
+        else:
+            self._column_name_flag = params[ConstantValues.column_name_flag]
+
         if self._name == ConstantValues.train_dataset or self._name == ConstantValues.val_dataset:
             self.__use_weight_flag = params[ConstantValues.use_weight_flag]
-            if self._name == ConstantValues.train_dataset:
-                self._column_name_flag = params[ConstantValues.column_name_flag]
             assert isinstance(self.__use_weight_flag, bool), "This value should be bool type, but get {}".format(
                 self.__use_weight_flag)
             if self._name == ConstantValues.val_dataset:
@@ -443,8 +446,7 @@ class PlaintextDataset(BaseDataset):
 
                 if weight is not None:
                     for index, weight_name in enumerate(weight.columns):
-                        weight.rename(columns={weight_name: target_names[index]},
-                                      inplace=True)
+                        weight = weight.rename(columns={weight_name: target_names[index]})
 
                 if self.__dataset_weight_dict:
                     for weight_index in self.__dataset_weight_dict.copy().keys():
@@ -468,6 +470,7 @@ class PlaintextDataset(BaseDataset):
     def load_libsvm(self):
         data, target = load_svmlight_file(self._data_path)
         data = pd.DataFrame(data.toarray())
+        print(data)
         target = pd.DataFrame(target)
         if self._name == ConstantValues.train_dataset:
             if bool(self._weight_column_names) and bool(self.__dataset_weight_dict):

@@ -17,7 +17,6 @@ import numpy as np
 import pandas as pd
 from scipy import special
 
-import xgboost as xgb
 
 from entity.model.model import ModelWrapper
 from entity.model.package_dataset import PackageDataset
@@ -33,7 +32,7 @@ from utils.yaml_exec import yaml_write
 from utils.Logger import logger
 
 
-class Gaussxgboost(ModelWrapper):
+class GaussXgboost(ModelWrapper):
     """
     xgboost object.
     """
@@ -54,23 +53,19 @@ class Gaussxgboost(ModelWrapper):
             super().__init__(
                 name=params[ConstantValues.name],
                 model_root_path=params[ConstantValues.model_root_path],
-                init_model_root=params[ConstantValues.init_model_root],
                 task_name=params[ConstantValues.task_name],
                 train_flag=params[ConstantValues.train_flag],
-                decay_rate=params[ConstantValues.decay_rate],
-                metric_eval_used_flag=params[ConstantValues.metric_eval_used_flag]
+                decay_rate=params[ConstantValues.decay_rate]
             )
         else:
             assert params[ConstantValues.train_flag] == ConstantValues.inference
             super().__init__(
                 name=params[ConstantValues.name],
                 model_root_path=params[ConstantValues.model_root_path],
-                init_model_root=params[ConstantValues.init_model_root],
                 increment_flag=params[ConstantValues.increment_flag],
                 infer_result_type=params[ConstantValues.infer_result_type],
                 task_name=params[ConstantValues.task_name],
-                train_flag=params[ConstantValues.train_flag],
-                metric_eval_used_flag=params[ConstantValues.metric_eval_used_flag]
+                train_flag=params[ConstantValues.train_flag]
             )
 
         self._model_file_name = self._name + ".txt"
@@ -94,7 +89,6 @@ class Gaussxgboost(ModelWrapper):
         dataset_bunch = kwargs.get("dataset")
         train_flag = kwargs.get("train_flag")
 
-        categorical_list = dataset_bunch.categorical_list
         # dataset is a BaseDataset object, you can use get_dataset() method to get a Bunch object,
         # including data, target, feature_names, target_names, generated_feature_names.
         assert isinstance(dataset_bunch.data, pd.DataFrame)
@@ -116,6 +110,7 @@ class Gaussxgboost(ModelWrapper):
                 data=dataset_bunch.data,
                 label=dataset_bunch.target,
                 weight=weight,
+                enable_categorical=True,
                 silent=True
             )
 
@@ -125,61 +120,38 @@ class Gaussxgboost(ModelWrapper):
                 )
             )
             return xgb_data, dataset_bunch
-        return dataset_bunch
+        else:
+            xgb_data = xgb.DMatrix(
+                data=dataset_bunch.data,
+                label=dataset_bunch.target,
+                silent=True
+            )
+        return xgb_data, dataset_bunch
 
     def _initialize_model(self):
         pass
 
-    def _binary_train(self,
-                      train_dataset: BaseDataset,
-                      val_dataset: BaseDataset,
-                      **entity):
-        """
-        This method is used to train xgboost
-        model in binary classification.
-        :param train_dataset:
-        :param val_dataset:
-        :param entity:
-        :return: None
-        """
-        assert self._train_flag == ConstantValues.train
-        assert self._task_name == ConstantValues.binary_classification
+    def __core_train(self,
+                     train_dataset: BaseDataset,
+                     val_dataset: BaseDataset,
+                     **entity):
+        params = self._model_params
 
-        init_model_path = self._init_model_root
-        if init_model_path:
+        # generate init model path for training.
+        if self._init_model_path:
+            init_model_path = os.path.join(self._init_model_path, self._model_file_name)
             assert os.path.isfile(init_model_path), \
                 "Value: init_model_path({}) is not a valid model path.".format(
                     init_model_path)
+        else:
+            init_model_path = None
 
-        params = self._model_params
-        params["objective"] = "binary:logistic"
-
+        # generate user-defined loss function object.
         if entity["loss"] is not None:
             self._loss_function = entity["loss"].loss_fn
             obj_function = self._loss_func
         else:
             obj_function = None
-
-        train_target_names = train_dataset.get_dataset().target_names
-        eval_target_names = val_dataset.get_dataset().target_names
-
-        assert operator.eq(train_target_names, eval_target_names), \
-            "Value: target_names is different between train_dataset and validation dataset."
-
-        # One label learning is achieved now, multi_label
-        # learning will be supported in future.
-        self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
-
-        train_label_set = pd.unique(train_dataset.get_dataset().target[self._target_names])
-        eval_label_set = pd.unique(val_dataset.get_dataset().target[self._target_names])
-        train_label_num = len(train_label_set)
-        eval_label_num = len(eval_label_set)
-
-        assert train_label_num == eval_label_num and train_label_num == 2, \
-            "Set of train label is: {}, length: {}, validation label is {}, length is {}, " \
-            "and binary classification can not be used.".format(
-                train_label_set, train_label_num, eval_label_set, eval_label_num
-            )
 
         if self._metric_eval_used_flag and entity["metric"] is not None:
             entity["metric"].label_name = self._target_names
@@ -188,13 +160,6 @@ class Gaussxgboost(ModelWrapper):
         else:
             params["eval_metric"] = "logloss"
             eval_function = None
-
-        logger.info(
-            "Construct xgboost training dataset, "
-            "with current memory usage: {:.2f} GiB".format(
-                get_current_memory_gb()["memory_usage"]
-            )
-        )
 
         xgb_entity = self.__xgb_preprocessing(
             **Bunch(
@@ -211,13 +176,6 @@ class Gaussxgboost(ModelWrapper):
 
         xgb_train = xgb_entity.xgb_train
         xgb_eval = xgb_entity.xgb_eval
-
-        logger.info(
-            "Set preprocessing parameters for xgboost, "
-            "with current memory usage: {:.2f} GiB".format(
-                get_current_memory_gb()["memory_usage"]
-            )
-        )
 
         if self._model_params is not None:
 
@@ -261,6 +219,61 @@ class Gaussxgboost(ModelWrapper):
 
         else:
             raise ValueError("Model parameters is None.")
+
+    def _binary_train(self,
+                      train_dataset: BaseDataset,
+                      val_dataset: BaseDataset,
+                      **entity):
+        """
+        This method is used to train xgboost
+        model in binary classification.
+        :param train_dataset:
+        :param val_dataset:
+        :param entity:
+        :return: None
+        """
+        assert self._train_flag == ConstantValues.train
+        assert self._task_name == ConstantValues.binary_classification
+
+        params = self._model_params
+        params["objective"] = "binary:logistic"
+
+        train_target_names = train_dataset.get_dataset().target_names
+        eval_target_names = val_dataset.get_dataset().target_names
+
+        assert operator.eq(train_target_names, eval_target_names), \
+            "Value: target_names is different between train_dataset and validation dataset."
+
+        # One label learning is achieved now, multi_label
+        # learning will be supported in future.
+        self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
+
+        train_label_set = pd.unique(train_dataset.get_dataset().target[self._target_names])
+        eval_label_set = pd.unique(val_dataset.get_dataset().target[self._target_names])
+        train_label_num = len(train_label_set)
+        eval_label_num = len(eval_label_set)
+
+        assert train_label_num == eval_label_num and train_label_num == 2, \
+            "Set of train label is: {}, length: {}, validation label is {}, length is {}, " \
+            "and binary classification can not be used.".format(
+                train_label_set, train_label_num, eval_label_set, eval_label_num
+            )
+
+        logger.info(
+            "Construct xgboost training dataset, "
+            "with current memory usage: {:.2f} GiB".format(
+                get_current_memory_gb()["memory_usage"]
+            )
+        )
+
+        logger.info(
+            "Set preprocessing parameters for xgboost, "
+            "with current memory usage: {:.2f} GiB".format(
+                get_current_memory_gb()["memory_usage"]
+            )
+        )
+
+        self.__core_train(train_dataset, val_dataset, **entity)
         self.count += 1
 
     def _multiclass_train(self,
@@ -270,16 +283,8 @@ class Gaussxgboost(ModelWrapper):
         assert self._train_flag == ConstantValues.train
         assert self._task_name == ConstantValues.multiclass_classification
 
-        init_model_path = self._init_model_root
-
         params = self._model_params
         params["objective"] = "multi:softmax"
-
-        if entity["loss"] is not None:
-            self._loss_function = entity["loss"].loss_fn
-            obj_function = self._loss_func
-        else:
-            obj_function = None
 
         train_target_names = train_dataset.get_dataset().target_names
         eval_target_names = val_dataset.get_dataset().target_names
@@ -304,36 +309,12 @@ class Gaussxgboost(ModelWrapper):
                 train_label_set, train_label_num, eval_label_set, eval_label_num
             )
 
-        if self._metric_eval_used_flag and entity["metric"] is not None:
-            entity["metric"].label_name = self._target_names
-            self._eval_function = entity["metric"].evaluate
-            eval_function = self._eval_func
-        else:
-            params["eval_metric"] = "mlogloss"
-            eval_function = None
-
         logger.info(
             "Construct xgboost training dataset, "
             "with current memory usage: {:.2f} GiB".format(
                 get_current_memory_gb()["memory_usage"]
             )
         )
-
-        xgb_entity = self.__xgb_preprocessing(
-            **Bunch(
-                label_name=self._target_names,
-                train_dataset=train_dataset,
-                val_dataset=val_dataset,
-                check_bunch=self._check_bunch,
-                feature_list=self._feature_list,
-                categorical_list=self._categorical_list,
-                train_flag=self._train_flag,
-                task_name=self._task_name
-            )
-        )
-
-        xgb_train = xgb_entity.xgb_train
-        xgb_eval = xgb_entity.xgb_eval
 
         logger.info(
             "Set preprocessing parameters for xgboost, "
@@ -342,50 +323,7 @@ class Gaussxgboost(ModelWrapper):
             )
         )
 
-        if self._model_params is not None:
-            self._model_config = {
-                "Name": self.name,
-                "Normalization": False,
-                "Standardization": False,
-                "OnehotEncoding": False,
-                "ModelParameters": self._model_params
-            }
-
-            logger.info(
-                "Training xgboost model with params: {}".format(params)
-            )
-            logger.info(
-                "Start training xgboost model, "
-                "with current memory usage: {:.2f} GiB".format(
-                    get_current_memory_gb()["memory_usage"]
-                )
-            )
-
-            num_boost_round = params.pop("num_boost_round")
-            early_stopping_rounds = params.pop("early_stopping_rounds")
-
-            self._model = xgb.train(
-                params=params,
-                train_set=xgb_train,
-                init_model=init_model_path,
-                num_boost_round=num_boost_round,
-                valid_sets=xgb_eval,
-                categorical_feature=self._categorical_list,
-                early_stopping_rounds=early_stopping_rounds,
-                fobj=obj_function,
-                feval=eval_function,
-                verbose_eval=False,
-            )
-
-            logger.info(
-                "Training xgboost model finished, "
-                "with current memory usage: {:.2f} GiB".format(
-                    get_current_memory_gb()["memory_usage"]
-                )
-            )
-
-        else:
-            raise ValueError("Model parameters is None.")
+        self.__core_train(train_dataset, val_dataset, **entity)
         self.count += 1
 
     def _regression_train(self,
@@ -395,16 +333,8 @@ class Gaussxgboost(ModelWrapper):
         assert self._task_name == ConstantValues.regression
         assert self._train_flag == ConstantValues.train
 
-        init_model_path = self._init_model_root
-
         params = self._model_params
-        params["objective"] = "regression"
-
-        if entity["loss"] is not None:
-            self._loss_function = entity["loss"].loss_fn
-            obj_function = self._loss_func
-        else:
-            obj_function = None
+        params["objective"] = "reg:squarederror"
 
         train_target_names = train_dataset.get_dataset().target_names
         eval_target_names = val_dataset.get_dataset().target_names
@@ -414,14 +344,6 @@ class Gaussxgboost(ModelWrapper):
 
         self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
 
-        if self._metric_eval_used_flag and entity["metric"] is not None:
-            entity["metric"].label_name = self._target_names
-            self._eval_function = entity["metric"].evaluate
-            eval_function = self._eval_func
-        else:
-            params["metric"] = "mse"
-            eval_function = None
-
         logger.info(
             "Construct xgboost training dataset, "
             "with current memory usage: {:.2f} GiB".format(
@@ -429,74 +351,7 @@ class Gaussxgboost(ModelWrapper):
             )
         )
 
-        xgb_entity = self.__xgb_preprocessing(
-            **Bunch(
-                label_name=self._target_names,
-                train_dataset=train_dataset,
-                val_dataset=val_dataset,
-                check_bunch=self._check_bunch,
-                feature_list=self._feature_list,
-                categorical_list=self._categorical_list,
-                train_flag=self._train_flag,
-                task_name=self._task_name
-            )
-        )
-
-        xgb_train = xgb_entity.xgb_train
-        xgb_eval = xgb_entity.xgb_eval
-
-        logger.info(
-            "Set preprocessing parameters for xgboost, "
-            "with current memory usage: {:.2f} GiB".format(
-                get_current_memory_gb()["memory_usage"]
-            )
-        )
-
-        if self._model_params is not None:
-
-            self._model_config = {
-                "Name": self.name,
-                "Normalization": False,
-                "Standardization": False,
-                "OnehotEncoding": False,
-                "ModelParameters": self._model_params
-            }
-
-            logger.info(
-                "Start training xgboost model, "
-                "with current memory usage: {:.2f} GiB".format(
-                    get_current_memory_gb()["memory_usage"]
-                )
-            )
-
-            num_boost_round = params.pop("num_boost_round")
-            early_stopping_rounds = params.pop("early_stopping_rounds")
-
-            self._model = xgb.train(
-                params=params,
-                train_set=xgb_train,
-                init_model=init_model_path,
-                num_boost_round=num_boost_round,
-                valid_sets=xgb_eval,
-                categorical_feature=self._categorical_list,
-                early_stopping_rounds=early_stopping_rounds,
-                fobj=obj_function,
-                feval=eval_function,
-                verbose_eval=False,
-            )
-
-            params["num_boost_round"] = num_boost_round
-            params["early_stopping_rounds"] = early_stopping_rounds
-
-            logger.info(
-                "Training xgboost model finished, "
-                "with current memory usage: {:.2f} GiB".format(
-                    get_current_memory_gb()["memory_usage"]
-                )
-            )
-
-        else:
-            raise ValueError("Model parameters is None.")
+        self.__core_train(train_dataset, val_dataset, **entity)
         self.count += 1
 
     def _binary_increment(self, train_dataset: BaseDataset, **entity):
@@ -506,7 +361,9 @@ class Gaussxgboost(ModelWrapper):
         :param train_dataset: new boosting train dataset.
         :return: None
         """
-        decay_rate = self._decay_rate
+        params = self._model_params
+        params["objective"] = "binary:logistic"
+
         init_model_path = os.path.join(self._model_save_root, self._model_file_name)
         assert os.path.isfile(init_model_path)
 
@@ -526,12 +383,22 @@ class Gaussxgboost(ModelWrapper):
             )
         )
 
-        dataset_bunch = xgb_entity.train_dataset
-        init_model = xgb.Booster(model_file=init_model_path)
-        assert 0 < decay_rate < 1, "Value: decay_rate must in (0, 1), but get {} instead.".format(decay_rate)
-        self._model = init_model.train(data=dataset_bunch.data,
-                                       label=dataset_bunch.target,
-                                       decay_rate=decay_rate)
+        xgb_train = xgb_entity.xgb_train
+
+        params.update({'process_type': 'update',
+                       'updater': 'refresh',
+                       'refresh_leaf': True})
+
+        num_boost_round = params.pop("num_boost_round")
+        params.pop("early_stopping")
+
+        self._model = xgb.train(
+            params=params,
+            dtrain=xgb_train,
+            xgb_model=init_model_path,
+            num_boost_round=num_boost_round,
+            verbose_eval=0,
+        )
 
     def _multiclass_increment(self, train_dataset: BaseDataset, **entity):
         """
@@ -540,13 +407,9 @@ class Gaussxgboost(ModelWrapper):
         :param train_dataset: new boosting train dataset.
         :return: None
         """
-        """
-        This method is used to train xgboost (booster)
-        model in binary classification.
-        :param train_dataset: new boosting train dataset.
-        :return: None
-        """
-        decay_rate = self._decay_rate
+        params = self._model_params
+        params["objective"] = "multi:softmax"
+
         init_model_path = os.path.join(self._model_save_root, self._model_file_name)
         assert os.path.isfile(init_model_path)
 
@@ -566,13 +429,22 @@ class Gaussxgboost(ModelWrapper):
             )
         )
 
-        dataset_bunch = xgb_entity.train_dataset
-        init_model = xgb.Booster(model_file=init_model_path)
-        assert 0 < decay_rate < 1, "Value: decay_rate must in (0, 1), but get {} instead.".format(decay_rate)
+        xgb_train = xgb_entity.xgb_train
 
-        self._model = init_model.refit(data=dataset_bunch.data,
-                                       label=dataset_bunch.target,
-                                       decay_rate=decay_rate)
+        params.update({'process_type': 'update',
+                       'updater': 'refresh',
+                       'refresh_leaf': True})
+
+        num_boost_round = params.pop("num_boost_round")
+        params.pop("early_stopping")
+
+        self._model = xgb.train(
+            params=params,
+            dtrain=xgb_train,
+            xgb_model=init_model_path,
+            num_boost_round=num_boost_round,
+            verbose_eval=0,
+        )
 
     def _regression_increment(self, train_dataset: BaseDataset, **entity):
         """
@@ -581,13 +453,9 @@ class Gaussxgboost(ModelWrapper):
         :param train_dataset: new boosting train dataset.
         :return: None
         """
-        """
-        This method is used to train xgboost (booster)
-        model in binary classification.
-        :param train_dataset: new boosting train dataset.
-        :return: None
-        """
-        decay_rate = self._decay_rate
+        params = self._model_params
+        params["objective"] = "reg:squarederror"
+
         init_model_path = os.path.join(self._model_save_root, self._model_file_name)
         assert os.path.isfile(init_model_path)
 
@@ -607,13 +475,22 @@ class Gaussxgboost(ModelWrapper):
             )
         )
 
-        dataset_bunch = xgb_entity.train_dataset
-        init_model = xgb.Booster(model_file=init_model_path)
-        assert 0 < decay_rate < 1, "Value: decay_rate must in (0, 1), but get {} instead.".format(decay_rate)
+        xgb_train = xgb_entity.xgb_train
 
-        self._model = init_model.refit(data=dataset_bunch.data,
-                                       label=dataset_bunch.target,
-                                       decay_rate=decay_rate)
+        params.update({'process_type': 'update',
+                       'updater': 'refresh',
+                       'refresh_leaf': True})
+
+        num_boost_round = params.pop("num_boost_round")
+        params.pop("early_stopping")
+
+        self._model = xgb.train(
+            params=params,
+            dtrain=xgb_train,
+            xgb_model=init_model_path,
+            num_boost_round=num_boost_round,
+            verbose_eval=0,
+        )
 
     def _predict_prob(self, infer_dataset: BaseDataset, **entity):
         assert self._train_flag == ConstantValues.inference
@@ -633,22 +510,14 @@ class Gaussxgboost(ModelWrapper):
         )
 
         infer_dataset = xgb_entity.infer_dataset
+        xgb_infer = xgb_entity.xgb_infer
         assert "data" in infer_dataset
 
         self._model = xgb.Booster(
             model_file=model_file_path
         )
 
-        if self._increment_flag is True:
-            inference_result = self._model.predict(data=infer_dataset.data, raw_score=False)
-            if self._task_name == ConstantValues.binary_classification:
-                inference_result = special.expit(inference_result)
-            elif self._task_name == ConstantValues.multiclass_classification:
-                inference_result = special.softmax(inference_result)
-            else:
-                assert self._task_name == ConstantValues.regression
-        else:
-            inference_result = self._model.predict(data=infer_dataset.data, raw_score=False)
+        inference_result = self._model.predict(data=xgb_infer, output_margin=False)
         inference_result = pd.DataFrame({"result": inference_result})
         return inference_result
 
@@ -671,13 +540,14 @@ class Gaussxgboost(ModelWrapper):
         )
 
         infer_dataset = xgb_entity.infer_dataset
+        xgb_infer = xgb_entity.xgb_infer
         assert "data" in infer_dataset
 
         self._model = xgb.Booster(
             model_file=model_file_path
         )
 
-        inference_result = self._model.predict(data=infer_dataset.data, raw_score=True)
+        inference_result = self._model.predict(data=xgb_infer, output_margin=True)
         inference_result = pd.DataFrame({"result": inference_result})
         return inference_result
 
@@ -724,7 +594,9 @@ class Gaussxgboost(ModelWrapper):
         )
 
         train_dataset = xgb_entity.train_dataset
+        xgb_train = xgb_entity.xgb_train
         eval_dataset = xgb_entity.eval_dataset
+        xgb_eval = xgb_entity.xgb_eval
 
         train_data, train_label, train_target_names = train_dataset.data, train_dataset.target, train_dataset.target_names
         eval_data, eval_label, eval_target_names = eval_dataset.data, eval_dataset.target, eval_dataset.target_names
@@ -742,10 +614,10 @@ class Gaussxgboost(ModelWrapper):
         )
         # 默认生成的为预测值的概率值，传入metric之后再处理.
         val_y_pred = self._model.predict(
-            eval_data
+            xgb_eval
         )
 
-        train_y_pred = self._model.predict(train_data)
+        train_y_pred = self._model.predict(xgb_train)
 
         assert isinstance(val_y_pred, np.ndarray)
         assert isinstance(train_y_pred, np.ndarray)
@@ -851,20 +723,21 @@ class Gaussxgboost(ModelWrapper):
 
     def __xgb_preprocessing(self, **params):
         xgb_entity = Bunch()
-        if "train_dataset" in params and params[ConstantValues.train_dataset]:
+        if ConstantValues.train_dataset in params and params[ConstantValues.train_dataset]:
             params["dataset"] = params.pop("train_dataset")
             xgb_train, train_dataset = self.__load_data(**params)
             xgb_entity.xgb_train = xgb_train
             xgb_entity.train_dataset = train_dataset
 
-        if "val_dataset" in params and params[ConstantValues.val_dataset]:
+        if ConstantValues.val_dataset in params and params[ConstantValues.val_dataset]:
             params["dataset"] = params.pop("val_dataset")
             xgb_eval, eval_dataset = self.__load_data(**params)
             xgb_entity.xgb_eval = xgb_eval
             xgb_entity.eval_dataset = eval_dataset
 
-        if "infer_dataset" in params and params[ConstantValues.infer_dataset]:
+        if ConstantValues.infer_dataset in params and params[ConstantValues.infer_dataset]:
             params["dataset"] = params.pop("infer_dataset")
-            infer_dataset = self.__load_data(**params)
+            xgb_infer, infer_dataset = self.__load_data(**params)
+            xgb_entity.xgb_infer = xgb_infer
             xgb_entity.infer_dataset = infer_dataset
         return xgb_entity

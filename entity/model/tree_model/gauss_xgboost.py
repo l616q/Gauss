@@ -132,56 +132,27 @@ class GaussXgboost(ModelWrapper):
     def _initialize_model(self):
         pass
 
-    def _binary_train(self,
-                      train_dataset: BaseDataset,
-                      val_dataset: BaseDataset,
-                      **entity):
-        """
-        This method is used to train xgboost
-        model in binary classification.
-        :param train_dataset:
-        :param val_dataset:
-        :param entity:
-        :return: None
-        """
-        assert self._train_flag == ConstantValues.train
-        assert self._task_name == ConstantValues.binary_classification
+    def __core_train(self,
+                     train_dataset: BaseDataset,
+                     val_dataset: BaseDataset,
+                     **entity):
+        params = self._model_params
 
-        init_model_path = self._init_model_root
-        if init_model_path:
+        # generate init model path for training.
+        if self._init_model_path:
+            init_model_path = os.path.join(self._init_model_path, self._model_file_name)
             assert os.path.isfile(init_model_path), \
                 "Value: init_model_path({}) is not a valid model path.".format(
                     init_model_path)
+        else:
+            init_model_path = None
 
-        params = self._model_params
-        params["objective"] = "binary:logistic"
-
+        # generate user-defined loss function object.
         if entity["loss"] is not None:
             self._loss_function = entity["loss"].loss_fn
             obj_function = self._loss_func
         else:
             obj_function = None
-
-        train_target_names = train_dataset.get_dataset().target_names
-        eval_target_names = val_dataset.get_dataset().target_names
-
-        assert operator.eq(train_target_names, eval_target_names), \
-            "Value: target_names is different between train_dataset and validation dataset."
-
-        # One label learning is achieved now, multi_label
-        # learning will be supported in future.
-        self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
-
-        train_label_set = pd.unique(train_dataset.get_dataset().target[self._target_names])
-        eval_label_set = pd.unique(val_dataset.get_dataset().target[self._target_names])
-        train_label_num = len(train_label_set)
-        eval_label_num = len(eval_label_set)
-
-        assert train_label_num == eval_label_num and train_label_num == 2, \
-            "Set of train label is: {}, length: {}, validation label is {}, length is {}, " \
-            "and binary classification can not be used.".format(
-                train_label_set, train_label_num, eval_label_set, eval_label_num
-            )
 
         if self._metric_eval_used_flag and entity["metric"] is not None:
             entity["metric"].label_name = self._target_names
@@ -190,13 +161,6 @@ class GaussXgboost(ModelWrapper):
         else:
             params["eval_metric"] = "logloss"
             eval_function = None
-
-        logger.info(
-            "Construct xgboost training dataset, "
-            "with current memory usage: {:.2f} GiB".format(
-                get_current_memory_gb()["memory_usage"]
-            )
-        )
 
         xgb_entity = self.__xgb_preprocessing(
             **Bunch(
@@ -213,13 +177,6 @@ class GaussXgboost(ModelWrapper):
 
         xgb_train = xgb_entity.xgb_train
         xgb_eval = xgb_entity.xgb_eval
-
-        logger.info(
-            "Set preprocessing parameters for xgboost, "
-            "with current memory usage: {:.2f} GiB".format(
-                get_current_memory_gb()["memory_usage"]
-            )
-        )
 
         if self._model_params is not None:
 
@@ -263,6 +220,61 @@ class GaussXgboost(ModelWrapper):
 
         else:
             raise ValueError("Model parameters is None.")
+
+    def _binary_train(self,
+                      train_dataset: BaseDataset,
+                      val_dataset: BaseDataset,
+                      **entity):
+        """
+        This method is used to train xgboost
+        model in binary classification.
+        :param train_dataset:
+        :param val_dataset:
+        :param entity:
+        :return: None
+        """
+        assert self._train_flag == ConstantValues.train
+        assert self._task_name == ConstantValues.binary_classification
+
+        params = self._model_params
+        params["objective"] = "binary:logistic"
+
+        train_target_names = train_dataset.get_dataset().target_names
+        eval_target_names = val_dataset.get_dataset().target_names
+
+        assert operator.eq(train_target_names, eval_target_names), \
+            "Value: target_names is different between train_dataset and validation dataset."
+
+        # One label learning is achieved now, multi_label
+        # learning will be supported in future.
+        self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
+
+        train_label_set = pd.unique(train_dataset.get_dataset().target[self._target_names])
+        eval_label_set = pd.unique(val_dataset.get_dataset().target[self._target_names])
+        train_label_num = len(train_label_set)
+        eval_label_num = len(eval_label_set)
+
+        assert train_label_num == eval_label_num and train_label_num == 2, \
+            "Set of train label is: {}, length: {}, validation label is {}, length is {}, " \
+            "and binary classification can not be used.".format(
+                train_label_set, train_label_num, eval_label_set, eval_label_num
+            )
+
+        logger.info(
+            "Construct xgboost training dataset, "
+            "with current memory usage: {:.2f} GiB".format(
+                get_current_memory_gb()["memory_usage"]
+            )
+        )
+
+        logger.info(
+            "Set preprocessing parameters for xgboost, "
+            "with current memory usage: {:.2f} GiB".format(
+                get_current_memory_gb()["memory_usage"]
+            )
+        )
+
+        self.__core_train(train_dataset, val_dataset, **entity)
         self.count += 1
 
     def _multiclass_train(self,
@@ -272,16 +284,8 @@ class GaussXgboost(ModelWrapper):
         assert self._train_flag == ConstantValues.train
         assert self._task_name == ConstantValues.multiclass_classification
 
-        init_model_path = self._init_model_root
-
         params = self._model_params
         params["objective"] = "multi:softmax"
-
-        if entity["loss"] is not None:
-            self._loss_function = entity["loss"].loss_fn
-            obj_function = self._loss_func
-        else:
-            obj_function = None
 
         train_target_names = train_dataset.get_dataset().target_names
         eval_target_names = val_dataset.get_dataset().target_names
@@ -306,36 +310,12 @@ class GaussXgboost(ModelWrapper):
                 train_label_set, train_label_num, eval_label_set, eval_label_num
             )
 
-        if self._metric_eval_used_flag and entity["metric"] is not None:
-            entity["metric"].label_name = self._target_names
-            self._eval_function = entity["metric"].evaluate
-            eval_function = self._eval_func
-        else:
-            params["eval_metric"] = "mlogloss"
-            eval_function = None
-
         logger.info(
             "Construct xgboost training dataset, "
             "with current memory usage: {:.2f} GiB".format(
                 get_current_memory_gb()["memory_usage"]
             )
         )
-
-        xgb_entity = self.__xgb_preprocessing(
-            **Bunch(
-                label_name=self._target_names,
-                train_dataset=train_dataset,
-                val_dataset=val_dataset,
-                check_bunch=self._check_bunch,
-                feature_list=self._feature_list,
-                categorical_list=self._categorical_list,
-                train_flag=self._train_flag,
-                task_name=self._task_name
-            )
-        )
-
-        xgb_train = xgb_entity.xgb_train
-        xgb_eval = xgb_entity.xgb_eval
 
         logger.info(
             "Set preprocessing parameters for xgboost, "
@@ -344,49 +324,7 @@ class GaussXgboost(ModelWrapper):
             )
         )
 
-        if self._model_params is not None:
-            self._model_config = {
-                "Name": self.name,
-                "Normalization": False,
-                "Standardization": False,
-                "OnehotEncoding": False,
-                "ModelParameters": self._model_params
-            }
-
-            logger.info(
-                "Training xgboost model with params: {}".format(params)
-            )
-            logger.info(
-                "Start training xgboost model, "
-                "with current memory usage: {:.2f} GiB".format(
-                    get_current_memory_gb()["memory_usage"]
-                )
-            )
-
-            num_boost_round = params.pop("num_boost_round")
-            early_stopping_rounds = params.pop("early_stopping")
-
-            self._model = xgb.train(
-                params=params,
-                dtrain=xgb_train,
-                xgb_model=init_model_path,
-                num_boost_round=num_boost_round,
-                evals=[(xgb_eval, "eval_set")],
-                early_stopping_rounds=early_stopping_rounds,
-                obj=obj_function,
-                feval=eval_function,
-                verbose_eval=0,
-            )
-
-            logger.info(
-                "Training xgboost model finished, "
-                "with current memory usage: {:.2f} GiB".format(
-                    get_current_memory_gb()["memory_usage"]
-                )
-            )
-
-        else:
-            raise ValueError("Model parameters is None.")
+        self.__core_train(train_dataset, val_dataset, **entity)
         self.count += 1
 
     def _regression_train(self,
@@ -396,16 +334,8 @@ class GaussXgboost(ModelWrapper):
         assert self._task_name == ConstantValues.regression
         assert self._train_flag == ConstantValues.train
 
-        init_model_path = self._init_model_root
-
         params = self._model_params
         params["objective"] = "reg:squarederror"
-
-        if entity["loss"] is not None:
-            self._loss_function = entity["loss"].loss_fn
-            obj_function = self._loss_func
-        else:
-            obj_function = None
 
         train_target_names = train_dataset.get_dataset().target_names
         eval_target_names = val_dataset.get_dataset().target_names
@@ -415,14 +345,6 @@ class GaussXgboost(ModelWrapper):
 
         self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
 
-        if self._metric_eval_used_flag and entity["metric"] is not None:
-            entity["metric"].label_name = self._target_names
-            self._eval_function = entity["metric"].evaluate
-            eval_function = self._eval_func
-        else:
-            params["eval_metric"] = "rmse"
-            eval_function = None
-
         logger.info(
             "Construct xgboost training dataset, "
             "with current memory usage: {:.2f} GiB".format(
@@ -430,73 +352,7 @@ class GaussXgboost(ModelWrapper):
             )
         )
 
-        xgb_entity = self.__xgb_preprocessing(
-            **Bunch(
-                label_name=self._target_names,
-                train_dataset=train_dataset,
-                val_dataset=val_dataset,
-                check_bunch=self._check_bunch,
-                feature_list=self._feature_list,
-                categorical_list=self._categorical_list,
-                train_flag=self._train_flag,
-                task_name=self._task_name
-            )
-        )
-
-        xgb_train = xgb_entity.xgb_train
-        xgb_eval = xgb_entity.xgb_eval
-
-        logger.info(
-            "Set preprocessing parameters for xgboost, "
-            "with current memory usage: {:.2f} GiB".format(
-                get_current_memory_gb()["memory_usage"]
-            )
-        )
-
-        if self._model_params is not None:
-
-            self._model_config = {
-                "Name": self.name,
-                "Normalization": False,
-                "Standardization": False,
-                "OnehotEncoding": False,
-                "ModelParameters": self._model_params
-            }
-
-            logger.info(
-                "Start training xgboost model, "
-                "with current memory usage: {:.2f} GiB".format(
-                    get_current_memory_gb()["memory_usage"]
-                )
-            )
-
-            num_boost_round = params.pop("num_boost_round")
-            early_stopping_rounds = params.pop("early_stopping")
-
-            self._model = xgb.train(
-                params=params,
-                dtrain=xgb_train,
-                xgb_model=init_model_path,
-                num_boost_round=num_boost_round,
-                evals=[(xgb_eval, "eval_set")],
-                early_stopping_rounds=early_stopping_rounds,
-                obj=obj_function,
-                feval=eval_function,
-                verbose_eval=0,
-            )
-
-            params["num_boost_round"] = num_boost_round
-            params["early_stopping_rounds"] = early_stopping_rounds
-
-            logger.info(
-                "Training xgboost model finished, "
-                "with current memory usage: {:.2f} GiB".format(
-                    get_current_memory_gb()["memory_usage"]
-                )
-            )
-
-        else:
-            raise ValueError("Model parameters is None.")
+        self.__core_train(train_dataset, val_dataset, **entity)
         self.count += 1
 
     def _binary_increment(self, train_dataset: BaseDataset, **entity):
@@ -863,7 +719,7 @@ class GaussXgboost(ModelWrapper):
 
         assert isinstance(metric_result, MetricResult)
         assert metric_result.optimize_mode in ["maximize", "minimize"]
-        is_higher_better = True if metric_result.optimize_mode == "max            inference_result = self._model.predict(data=infer_dataset.data, raw_score=False)imize" else False
+        is_higher_better = True if metric_result.optimize_mode == "maximize" else False
         return metric_result.metric_name, float(metric_result.result), is_higher_better
 
     def __xgb_preprocessing(self, **params):
