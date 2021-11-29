@@ -25,7 +25,6 @@ class PlainLabelEncode(BaseLabelEncode):
     """
     BaseLabelEncode Object.
     """
-
     def __init__(self, **params):
 
         super().__init__(
@@ -33,11 +32,9 @@ class PlainLabelEncode(BaseLabelEncode):
             train_flag=params[ConstantValues.train_flag],
             enable=params[ConstantValues.enable],
             task_name=params[ConstantValues.task_name],
-            feature_configure_path=params[ConstantValues.feature_configure_path]
+            source_file_path=params[ConstantValues.source_file_path],
+            final_file_path=params[ConstantValues.final_file_path]
         )
-
-        self.__final_file_path = params["final_file_path"]
-
         self.__feature_configure = None
 
         self.__label_encoding_configure_path = params["label_encoding_configure_path"]
@@ -77,7 +74,7 @@ class PlainLabelEncode(BaseLabelEncode):
         feature_names = dataset.get_dataset().feature_names
         target_names = dataset.get_dataset().target_names
 
-        self.__feature_configure = yaml_read(yaml_file=self.__final_file_path)
+        self.__feature_configure = yaml_read(yaml_file=self._final_file_path)
 
         with shelve.open(self.__label_encoding_configure_path) as shelve_open:
             le_model_list = shelve_open['label_encoding']
@@ -142,7 +139,7 @@ class PlainLabelEncode(BaseLabelEncode):
         assert isinstance(data, pd.DataFrame)
         feature_names = dataset.get_dataset().feature_names
 
-        self.__feature_configure = yaml_read(yaml_file=self.__final_file_path)
+        self.__feature_configure = yaml_read(yaml_file=self._final_file_path)
 
         with shelve.open(self.__label_encoding_configure_path) as shelve_open:
             le_model_list = shelve_open['label_encoding']
@@ -210,10 +207,10 @@ class PlainLabelEncode(BaseLabelEncode):
             shelve_open['label_encoding'] = self.__label_encoding
 
     def __load_dataset_configure(self):
-        self.__feature_configure = yaml_read(self._feature_configure_path)
+        self.__feature_configure = yaml_read(self._source_file_path)
 
     def __generate_final_configure(self):
-        yaml_write(yaml_dict=self.__feature_configure, yaml_file=self.__final_file_path)
+        yaml_write(yaml_dict=self.__feature_configure, yaml_file=self._final_file_path)
 
     def __switch_label(self, switch_type: str, dataset: BaseDataset):
         if self._task_name == ConstantValues.regression:

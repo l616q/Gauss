@@ -19,16 +19,27 @@ class Component(metaclass=abc.ABCMeta):
         All subclasses of Component must override the _train_run() method and
     _inference_run() method.
     """
-
     def __init__(self,
                  name: str,
                  train_flag: str,
                  enable: bool = True,
-                 task_name: str = None):
+                 task_name: str = None,
+                 source_file_path=None,
+                 final_file_path=None):
         """Construct a Component.
+        This object is base class for all component.
 
         :param name: The name of the Component.
         :param train_flag: The flag of train or inference statues of current workflow
+        :param enable: bool object, if True,
+        the main function of this component will be shut down.
+        :param task_name: string object, if the value is "train",
+        this component will be used for train and "_train_run" method will be used,
+        and if the value is "increment", this component will be used for increment
+        and "_increment_run" will be used, and if the value is "inference",
+        this component will be used for inference and "_predict_run" will be used.
+        :param source_file_path: input feature configure file path.
+        :param final_file_path: output feature configure file path.
         """
         assert task_name in [ConstantValues.binary_classification,
                              ConstantValues.multiclass_classification,
@@ -42,6 +53,8 @@ class Component(metaclass=abc.ABCMeta):
 
         self._enable = enable
         assert isinstance(self._enable, bool)
+        self._source_file_path = source_file_path
+        self._final_file_path = final_file_path
 
     @property
     def name(self):
@@ -105,3 +118,11 @@ class Component(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def _increment_run(self, **entity):
         pass
+
+    @property
+    def source_file_path(self):
+        return self._source_file_path
+
+    @property
+    def final_file_path(self):
+        return self._final_file_path

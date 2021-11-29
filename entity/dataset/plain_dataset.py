@@ -125,6 +125,7 @@ class PlaintextDataset(BaseDataset):
                 self.__load_val_dataset()
             else:
                 self.__load_data_from_path()
+            del self.__train_dataset
         elif self._data_path is None and self.__train_dataset is None and self._data_package is not None:
             self.__load_data_from_memory()
         else:

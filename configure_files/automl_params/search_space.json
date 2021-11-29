@@ -57,6 +57,37 @@
                     "_value": [100, 200, 300, 400, 500]
                 }
         },
+    "catboost": {
+    "learning_rate": {
+                "_type": "choice",
+                "_value": [0.01, 0.05, 0.1, 0.2, 0.3]
+    },
+
+    "max_depth": {
+                    "_type": "choice",
+                    "_value": [3, 5, 7, 9, 12]
+    },
+
+    "iterations": {
+                    "_type": "choice",
+                    "_value": [100, 200, 300, 400, 500]
+    },
+
+    "subsample": {
+                    "_type": "uniform",
+                    "_value": [0.7, 1.0]
+    },
+
+    "colsample_bylevel": {
+                    "_type": "uniform",
+                    "_value": [0.7, 1.0]
+    },
+
+    "early_stopping_rounds": {
+                    "_type": "choice",
+                    "_value": [1, 2, 3, 4, 5]
+    }
+    },
   "lr": {
 
     "alpha": {"_type": "choice",

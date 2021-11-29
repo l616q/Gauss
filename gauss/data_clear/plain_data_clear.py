@@ -35,20 +35,21 @@ class PlainDataClear(BaseDataClear):
         But you can just use one of them, PlainDataClear object will use strict coding check programming.
         """
 
-        super(PlainDataClear, self).__init__(name=params["name"], train_flag=params["train_flag"],
-                                             enable=params["enable"], task_name=params["task_name"])
+        super(PlainDataClear, self).__init__(name=params[ConstantValues.name],
+                                             train_flag=params[ConstantValues.train_flag],
+                                             enable=params[ConstantValues.enable],
+                                             task_name=params[ConstantValues.task_name],
+                                             source_file_path=params[ConstantValues.source_file_path],
+                                             final_file_path=params[ConstantValues.final_file_path])
 
-        self._feature_configure_path = params["feature_configure_path"]
-        self._final_file_path = params["final_file_path"]
         # 序列化模型
         self._data_clear_configure_path = params["data_clear_configure_path"]
-
         self._strategy_dict = params["strategy_dict"]
-
         self._missing_values = np.nan
-
-        self._default_cat_impute_model = SimpleImputer(missing_values=self._missing_values, strategy="most_frequent")
-        self._default_num_impute_model = SimpleImputer(missing_values=self._missing_values, strategy="mean")
+        self._default_cat_impute_model = SimpleImputer(missing_values=self._missing_values,
+                                                       strategy="most_frequent")
+        self._default_num_impute_model = SimpleImputer(missing_values=self._missing_values,
+                                                       strategy="mean")
 
         self._impute_models = {}
         self._already_data_clear = None
@@ -73,7 +74,7 @@ class PlainDataClear(BaseDataClear):
         self._data_clear_serialize()
 
     def __check_dtype(self, dataset: BaseDataset):
-        feature_conf = yaml_read(self._feature_configure_path)
+        feature_conf = yaml_read(self._source_file_path)
         data = dataset.get_dataset().data
         for item in feature_conf.keys():
             item_configure = Bunch(**feature_conf[item])
@@ -98,7 +99,7 @@ class PlainDataClear(BaseDataClear):
         assert isinstance(data, pd.DataFrame)
 
         feature_names = dataset.get_dataset().feature_names
-        feature_conf = yaml_read(self._feature_configure_path)
+        feature_conf = yaml_read(self._source_file_path)
         self._aberrant_modify(data=data)
 
         if self._enable is True:
@@ -129,7 +130,7 @@ class PlainDataClear(BaseDataClear):
         assert isinstance(data, pd.DataFrame)
 
         feature_names = dataset.get_dataset().feature_names
-        feature_conf = yaml_read(self._feature_configure_path)
+        feature_conf = yaml_read(self._source_file_path)
         self._aberrant_modify(data=data)
 
         if self._enable is True:
@@ -158,7 +159,7 @@ class PlainDataClear(BaseDataClear):
 
         assert isinstance(data, pd.DataFrame)
         self._aberrant_modify(data=data)
-        feature_conf = yaml_read(self._feature_configure_path)
+        feature_conf = yaml_read(self._source_file_path)
 
         for feature in feature_names:
             item_data = np.array(data[feature])
@@ -198,7 +199,7 @@ class PlainDataClear(BaseDataClear):
             data[feature] = item_data
 
     def _aberrant_modify(self, data: pd.DataFrame):
-        feature_conf = yaml_read(self._feature_configure_path)
+        feature_conf = yaml_read(self._source_file_path)
         for col in data.columns:
             dtype = feature_conf[col]["dtype"]
             check_nan = [self._type_check(item, dtype) for item in data[col]]
@@ -237,7 +238,7 @@ class PlainDataClear(BaseDataClear):
             shelve_open['impute_models'] = self._impute_models
 
     def final_configure_generation(self):
-        feature_conf = yaml_read(yaml_file=self._feature_configure_path)
+        feature_conf = yaml_read(yaml_file=self._source_file_path)
 
         with open(self._final_file_path, "w", encoding="utf-8") as yaml_file:
             yaml.dump(feature_conf, yaml_file)

@@ -30,19 +30,18 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
             train_flag=params["train_flag"],
             enable=params["enable"],
             task_name=params["task_name"],
-            feature_configure_path=params["feature_config_path"]
+            source_file_path=params[ConstantValues.source_file_path],
+            final_file_path=params[ConstantValues.final_file_path]
         )
 
-        self._final_file_path = params["final_file_path"]
-
-        self.variable_types = {}
-        self.feature_configure = None
+        self.__variable_types = {}
+        self.__feature_configure = None
 
         # This is the feature description dictionary, which will generate a yaml file.
-        self.yaml_dict = {}
+        self.__yaml_dict = {}
 
-        self.generated_feature_names = None
-        self.index_name = "data_id"
+        self.__generated_feature_names = None
+        self.__index_name = "data_id"
 
     def _train_run(self, **entity):
         assert "train_dataset" in entity.keys()
@@ -51,7 +50,7 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
         logger.info("Loading Data clearing feature configuration, with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
         self._load_feature_configure()
-        assert self.feature_configure is not None
+        assert self.__feature_configure is not None
 
         logger.info("Feature generation component flag: " + str(self._enable) + ", with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
@@ -72,7 +71,7 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
         assert isinstance(data, pd.DataFrame)
 
         self._load_feature_configure()
-        assert self.feature_configure is not None
+        assert self.__feature_configure is not None
 
         if self._enable is True:
             self._ft_generator(dataset=dataset)
@@ -85,13 +84,13 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
         assert isinstance(data, pd.DataFrame)
 
         self._load_feature_configure()
-        assert self.feature_configure is not None
+        assert self.__feature_configure is not None
 
         if self._enable is True:
             self._ft_generator(dataset=dataset)
 
     def _load_feature_configure(self):
-        self.feature_configure = yaml_read(self._feature_configure_path)
+        self.__feature_configure = yaml_read(self._source_file_path)
 
     def _ft_generator(self, dataset: BaseDataset):
         data = dataset.get_dataset().pop("data")
@@ -102,20 +101,20 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
         feature_names = dataset.get_dataset().feature_names
         for col in feature_names:
 
-            assert not self.variable_types.get(col)
-            if self.feature_configure[col]['ftype'] == 'category':
-                self.variable_types[col] = ft.variable_types.Categorical
-            elif self.feature_configure[col]['ftype'] == 'numerical':
-                self.variable_types[col] = ft.variable_types.Numeric
+            assert not self.__variable_types.get(col)
+            if self.__feature_configure[col]['ftype'] == 'category':
+                self.__variable_types[col] = ft.variable_types.Categorical
+            elif self.__feature_configure[col]['ftype'] == 'numerical':
+                self.__variable_types[col] = ft.variable_types.Numeric
             else:
-                assert self.feature_configure[col]['ftype'] == 'datetime'
-                self.variable_types[col] = ft.variable_types.Datetime
+                assert self.__feature_configure[col]['ftype'] == 'datetime'
+                self.__variable_types[col] = ft.variable_types.Datetime
 
         logger.info("Featuretools EntitySet object constructs, " + "with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
         es = ft.EntitySet(id=self.name).entity_from_dataframe(entity_id=self._name, dataframe=data,
-                                                              variable_types=self.variable_types,
-                                                              make_index=True, index=self.index_name)
+                                                              variable_types=self.__variable_types,
+                                                              make_index=True, index=self.__index_name)
 
         primitives = ft.list_primitives()
         trans_primitives = list(primitives[primitives['type'] == 'transform']['name'].values)
@@ -166,7 +165,7 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
 
         for col in df.columns:
             if df[col].dtype == "object" \
-                    or self.index_name in col \
+                    or self.__index_name in col \
                     or df[col].isin([np.nan, np.inf, -np.inf]).any() is True:
                 cols.append(col)
 
@@ -199,12 +198,12 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
                     raise ValueError("Unknown input feature ftype: " + str(feature.name))
 
                 item_dict = {"name": feature.name, "index": index, "dtype": dtype, "ftype": ftype, "used": True}
-                assert feature.name not in self.yaml_dict.keys()
+                assert feature.name not in self.__yaml_dict.keys()
                 if feature.name in self.generated_feature_names:
-                    self.yaml_dict[feature.name] = item_dict
+                    self.__yaml_dict[feature.name] = item_dict
         else:
-            for item in self.feature_configure.keys():
-                self.feature_configure[item]["used"] = True
-            self.yaml_dict = self.feature_configure
+            for item in self.__feature_configure.keys():
+                self.__feature_configure[item]["used"] = True
+            self.__yaml_dict = self.__feature_configure
 
-        yaml_write(yaml_dict=self.yaml_dict, yaml_file=self._final_file_path)
+        yaml_write(yaml_dict=self.__yaml_dict, yaml_file=self._final_file_path)

@@ -23,23 +23,17 @@ from utils.base import get_current_memory_gb
 class UnsupervisedFeatureSelector(BaseFeatureSelector):
 
     def __init__(self, **params):
-
         """
-        :param name:
-        :param train_flag:
-        :param enable:
-        :param feature_config_path:
-        :param label_encoding_configure_path:
-        :param feature_select_configure_path:
+        :param name: component name
+        :param train_flag: string object.
+        :param enable: bool object.
         """
-        super(UnsupervisedFeatureSelector, self).__init__(name=params["name"],
-                                                          train_flag=params["train_flag"],
-                                                          enable=params["enable"],
-                                                          task_name=params["task_name"],
-                                                          feature_configure_path=params["feature_config_path"])
-
-        self.feature_list = []
-        self._final_file_path = params["final_file_path"]
+        super(UnsupervisedFeatureSelector, self).__init__(name=params[ConstantValues.name],
+                                                          train_flag=params[ConstantValues.train_flag],
+                                                          enable=params[ConstantValues.enable],
+                                                          task_name=params[ConstantValues.task_name],
+                                                          source_file_path=params[ConstantValues.source_file_path],
+                                                          final_file_path=params[ConstantValues.final_file_path])
 
         self._feature_conf = None
 
@@ -55,7 +49,7 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
         data = dataset.get_dataset().data
 
         logger.info("Unsupervised feature selector component flag: " + str(self._enable))
-        self._feature_conf = yaml_read(self._feature_configure_path)
+        self._feature_conf = yaml_read(self._source_file_path)
 
         logger.info("Remove datetime features, " + "with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
@@ -64,7 +58,8 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
                 self._feature_conf[col]["used"] = False
                 data.drop([col], axis=1, inplace=True)
 
-        logger.info("Starting unsupervised feature selecting, method: featuretools feature selection, " + "with current memory usage: %.2f GiB",
+        logger.info("Starting unsupervised feature selecting, method: featuretools feature selection, "
+                    "with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
 
         if self._enable is True:
@@ -102,7 +97,8 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
 
         :param features: features for dataset.
         :param target: labels for dataset.
-        :return:array-like data structure depends on input. notes: return values will override BaseDataset object
+        :return:array-like data structure depends on input.
+        notes: return values will override BaseDataset object
         """
         features = SelectKBest(chi2, k=k).fit_transform(features, target)
 
@@ -114,15 +110,18 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
         :return:
         """
 
-        logger.info("Starting to remove low information features, " + "with current memory usage: %.2f GiB, total features: %d",
+        logger.info("Starting to remove low information features, "
+                    "with current memory usage: %.2f GiB, total features: %d",
                     get_current_memory_gb()["memory_usage"], len(features.columns))
         self.remove_low_information_features(features)
 
-        logger.info("Starting to remove highly null features, " + "with current memory usage: %.2f GiB, total features: %d",
+        logger.info("Starting to remove highly null features, "
+                    "with current memory usage: %.2f GiB, total features: %d",
                     get_current_memory_gb()["memory_usage"], len(features.columns))
         self.remove_highly_null_features(features)
 
-        logger.info("Starting to remove single value features, " + "with current memory usage: %.2f GiB, total features: %d",
+        logger.info("Starting to remove single value features, "
+                    "with current memory usage: %.2f GiB, total features: %d",
                     get_current_memory_gb()["memory_usage"], len(features.columns))
         self.remove_single_value_features(features)
 
