@@ -21,7 +21,6 @@ class PreprocessRoute(Component):
     """
     PreprocessRoute object.
     """
-
     def __init__(self, **params):
         """
 
@@ -81,7 +80,7 @@ class PreprocessRoute(Component):
                 enable=params[ConstantValues.label_encoder_flag],
                 task_name=params[ConstantValues.task_name],
                 label_switch_type=params[ConstantValues.label_switch_type],
-                feature_configure_path=params[ConstantValues.feature_path_dict][ConstantValues.data_clear_feature_path],
+                source_file_path=params[ConstantValues.feature_path_dict][ConstantValues.data_clear_feature_path],
                 final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.label_encoder_feature_path],
                 label_encoding_configure_path=params[ConstantValues.feature_path_dict][
                     ConstantValues.label_encoding_models_path]
@@ -92,7 +91,7 @@ class PreprocessRoute(Component):
                 train_flag=self._train_flag,
                 enable=params[ConstantValues.label_encoder_flag],
                 task_name=params[ConstantValues.task_name],
-                feature_configure_path=params[ConstantValues.feature_path_dict][ConstantValues.data_clear_feature_path],
+                source_file_path=params[ConstantValues.feature_path_dict][ConstantValues.data_clear_feature_path],
                 final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.label_encoder_feature_path],
                 label_encoding_configure_path=params[ConstantValues.feature_path_dict][
                     ConstantValues.label_encoding_models_path]
@@ -141,7 +140,7 @@ class PreprocessRoute(Component):
                 train_flag=self._train_flag,
                 enable=params[ConstantValues.data_clear_flag],
                 task_name=params[ConstantValues.task_name],
-                feature_configure_path=params[ConstantValues.feature_path_dict][
+                source_file_path=params[ConstantValues.feature_path_dict][
                     ConstantValues.type_inference_feature_path],
                 data_clear_configure_path=params[ConstantValues.feature_path_dict][ConstantValues.impute_models_path],
                 final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.data_clear_feature_path],
@@ -163,7 +162,7 @@ class PreprocessRoute(Component):
                 train_flag=self._train_flag,
                 enable=params[ConstantValues.feature_generator_flag],
                 task_name=params[ConstantValues.task_name],
-                feature_config_path=params[ConstantValues.feature_path_dict][ConstantValues.label_encoder_feature_path],
+                source_file_path=params[ConstantValues.feature_path_dict][ConstantValues.label_encoder_feature_path],
                 final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.feature_generator_feature_path]
             )
         )
@@ -176,7 +175,7 @@ class PreprocessRoute(Component):
                 train_flag=self._train_flag,
                 enable=params[ConstantValues.unsupervised_feature_selector_flag],
                 task_name=params[ConstantValues.task_name],
-                feature_config_path=params[ConstantValues.feature_path_dict][
+                source_file_path=params[ConstantValues.feature_path_dict][
                     ConstantValues.feature_generator_feature_path],
                 final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.unsupervised_feature_path]
             )

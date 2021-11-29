@@ -26,7 +26,6 @@ class PlainLabelEncode(BaseLabelEncode):
     BaseLabelEncode Object.
     """
     def __init__(self, **params):
-
         super().__init__(
             name=params[ConstantValues.name],
             train_flag=params[ConstantValues.train_flag],
