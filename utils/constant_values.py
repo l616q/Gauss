@@ -8,6 +8,7 @@ Authors: citic-lab
 class ConstantValues:
     # system name
     name = "name"
+    callback_func = "callback_func"
     train_flag = "train_flag"
     increment_flag = "increment_flag"
     enable = "enable"
@@ -139,3 +140,4 @@ class ConstantValues:
     model_save = "model_save"
     # configure dict name
     final_feature_configure = "final_feature_configure"
+    report_configure = "report_configure"

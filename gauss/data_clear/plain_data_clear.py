@@ -46,6 +46,7 @@ class PlainDataClear(BaseDataClear):
         self._data_clear_configure_path = params["data_clear_configure_path"]
         self._strategy_dict = params["strategy_dict"]
         self._missing_values = np.nan
+
         self._default_cat_impute_model = SimpleImputer(missing_values=self._missing_values,
                                                        strategy="most_frequent")
         self._default_num_impute_model = SimpleImputer(missing_values=self._missing_values,
@@ -171,26 +172,29 @@ class PlainDataClear(BaseDataClear):
                     impute_model = SimpleImputer(missing_values=self._missing_values,
                                                  strategy=self._strategy_dict[item_conf['ftype']]["name"],
                                                  fill_value=self._strategy_dict[item_conf['ftype']].get("fill_value"),
-                                                 add_indicator=True)
-
+                                                 add_indicator=False)
                 else:
                     assert self._strategy_dict["model"]["name"] == "feature"
                     impute_model = SimpleImputer(missing_values=self._missing_values,
                                                  strategy=self._strategy_dict[feature]["name"],
                                                  fill_value=self._strategy_dict[feature].get("fill_value"),
-                                                 add_indicator=True)
-
+                                                 add_indicator=False)
             else:
-
                 if item_conf['ftype'] == "numerical":
                     impute_model = copy.deepcopy(self._default_num_impute_model)
-
                 else:
                     assert item_conf['ftype'] in ["category", "bool", "datetime"]
                     impute_model = copy.deepcopy(self._default_cat_impute_model)
 
             item_data = item_data.reshape(-1, 1)
-            impute_model.fit(item_data)
+
+            # This block is used to avoid some warning in special running environment.
+            if "int" in item_conf["dtype"]:
+                impute_model.fit(item_data.astype(np.int64))
+            elif "float" in item_conf["dtype"]:
+                impute_model.fit(item_data.astype(np.float64))
+            else:
+                impute_model.fit(item_data)
 
             item_data = impute_model.transform(item_data)
             item_data = item_data.reshape(1, -1).squeeze(axis=0)
@@ -218,11 +222,20 @@ class PlainDataClear(BaseDataClear):
 
         # When dtype is int, np.nan or string item can exist.
         if dtype == "int64":
-            try:
-                int(item)
-                return True
-            except ValueError:
-                return False
+            if dtype == "int64":
+                try:
+                    int(item)
+                    return True
+                except ValueError:
+                    try:
+                        float(item)
+                        value = float(item)
+                        if abs(value - round(value)) < 0.00001:
+                            return True
+                        else:
+                            return False
+                    except ValueError:
+                        return False
 
         if dtype == "float64":
             try:

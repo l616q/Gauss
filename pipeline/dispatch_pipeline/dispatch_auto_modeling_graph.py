@@ -20,9 +20,12 @@ from utils.constant_values import ConstantValues
 
 # This class is used to train model in fast module.
 class AutoModelingGraph(BaseModelingGraph):
-    def __init__(self, name: str, user_configure: dict, system_configure: dict):
+    def __init__(self,
+                 name: str,
+                 user_configure: dict,
+                 system_configure: dict):
         """
-
+        AutoModelingGraph object.
         :param name: pipeline name.
         :param user_configure: configure dict object from user.
         :param system_configure: configure dict object from system.
