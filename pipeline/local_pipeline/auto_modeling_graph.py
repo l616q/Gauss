@@ -18,16 +18,18 @@ from utils.yaml_exec import yaml_write
 from utils.exception import PipeLineLogicError, NoResultReturnException
 from utils.Logger import logger
 from utils.constant_values import ConstantValues
+from utils.exception import GeneralEntityException
+from utils.exception import GeneralComponentException
 
 
 # This class is used to train model in fast module.
 class AutoModelingGraph(BaseModelingGraph):
     def __init__(self, name: str, user_configure: dict, system_configure: dict):
         """
-
-        :param name:
-        :param user_configure:
-        :param system_configure:
+        Create fast auto modeling graph pipeline.
+        :param name: pipeline name.
+        :param user_configure: user configure dict.
+        :param system_configure: system configure dict.
         """
         if user_configure[ConstantValues.model_zoo] is None:
             user_configure[ConstantValues.model_zoo] = ["xgboost", "lightgbm", "catboost", "lr_lightgbm", "dnn"]
@@ -96,8 +98,7 @@ class AutoModelingGraph(BaseModelingGraph):
             auto_ml_trial_num=system_configure[ConstantValues.auto_ml_trial_num],
             opt_model_names=system_configure[ConstantValues.opt_model_names],
             auto_ml_path=system_configure[ConstantValues.auto_ml_path],
-            selector_configure_path=system_configure[
-                ConstantValues.selector_configure_path])
+            selector_configure_path=system_configure[ConstantValues.selector_configure_path])
 
         self._model_zoo = user_configure[ConstantValues.model_zoo]
         self._label_switch_type = user_configure[ConstantValues.label_switch_type]
@@ -192,12 +193,12 @@ class AutoModelingGraph(BaseModelingGraph):
             )
 
         folder_name = "_".join([str(data_clear_flag),
-                               str(feature_generator_flag),
-                               str(unsupervised_feature_selector_flag),
-                               str(supervised_feature_selector_flag),
-                               str(supervised_selector_model_names),
-                               opt_model_names,
-                               model_name])
+                                str(feature_generator_flag),
+                                str(unsupervised_feature_selector_flag),
+                                str(supervised_feature_selector_flag),
+                                str(supervised_selector_model_names),
+                                opt_model_names,
+                                model_name])
 
         supervised_selector_model_names = [supervised_selector_model_names]
         opt_model_names = [opt_model_names]
@@ -286,7 +287,10 @@ class AutoModelingGraph(BaseModelingGraph):
         except PipeLineLogicError as error:
             logger.info(error)
             return None
-
+        finally:
+            report_configure = preprocess_chain.report_configure
+            print(report_configure)
+        assert 1 == 0
         self._already_data_clear = preprocess_chain.already_data_clear
 
         assert params.get(ConstantValues.model_name) is not None
@@ -343,9 +347,7 @@ class AutoModelingGraph(BaseModelingGraph):
         routes = self.__generate_route()
 
         for params in routes:
-            data_clear_flag, feature_generator_flag, unsupervised_feature_selector_flag, \
-                supervised_feature_selector_flag, supervised_selector_model_names, \
-                opt_model_names, model_name = params
+            data_clear_flag, feature_generator_flag, unsupervised_feature_selector_flag, supervised_feature_selector_flag, supervised_selector_model_names, opt_model_names, model_name = params
 
             local_result = self._run_route(
                 data_clear_flag=data_clear_flag,
@@ -384,9 +386,7 @@ class AutoModelingGraph(BaseModelingGraph):
         routes = self.__generate_route()
 
         for params in routes:
-            data_clear_flag, feature_generator_flag, unsupervised_feature_selector_flag, \
-                supervised_feature_selector_flag, supervised_selector_model_names, \
-                opt_model_names, model_name = params
+            data_clear_flag, feature_generator_flag, unsupervised_feature_selector_flag, supervised_feature_selector_flag, supervised_selector_model_names, opt_model_names, model_name = params
 
             folder_name = "_".join([str(data_clear_flag),
                                     str(feature_generator_flag),

@@ -182,6 +182,25 @@ class PreprocessRoute(Component):
             )
         )
 
+        self.__report_configure = Bunch(
+            entity_configure=Bunch(
+                dataset=Bunch(),
+                feature_conf=Bunch(),
+                loss=Bunch(),
+                metric=Bunch(),
+                model=Bunch()
+            ),
+            component_configure=Bunch(
+                type_inference=Bunch(),
+                data_clear=Bunch(),
+                label_encode=Bunch(),
+                feature_generation=Bunch(),
+                unsupervised_feature_selector=Bunch(),
+                supervised_feature_selector=Bunch()
+            ),
+            global_configure=Bunch()
+        )
+
     @classmethod
     def create_component(cls, component_name: str, **params):
         """
@@ -231,8 +250,10 @@ class PreprocessRoute(Component):
             dataset_weight_dict=self._dataset_weight_dict,
             weight_column_name=self._weight_column_name,
             column_name_flag=self._train_column_name_flag,
-            memory_only=True
+            memory_only=True,
+            callback_func=self.__callback_func
         )
+
         logger.info("Starting loading data.")
         train_dataset = self.create_entity(
             entity_name=self._dataset_name,
@@ -398,7 +419,8 @@ class PreprocessRoute(Component):
                 dataset_weight_dict=self._dataset_weight_dict,
                 weight_column_name=self._weight_column_name,
                 column_name_flag=self._val_column_name_flag,
-                memory_only=True
+                memory_only=True,
+                callback_func=self.__callback_func
             )
             val_dataset = self.create_entity(
                 self._dataset_name,
@@ -424,3 +446,16 @@ class PreprocessRoute(Component):
         else:
             raise ValueError("Validation dataset path is None.")
         return val_dataset
+
+    def __callback_func(self,
+                        type_name: str,
+                        object_name: str,
+                        success_flag: bool,
+                        message: str):
+
+        self.__report_configure[type_name][object_name]["success_flag"] = success_flag
+        self.__report_configure[type_name][object_name]["message"] = message
+
+    @property
+    def report_configure(self):
+        return self.__report_configure

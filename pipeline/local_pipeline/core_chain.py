@@ -42,7 +42,7 @@ class CoreRoute(Component):
         # create feature configure
         feature_conf_params = Bunch(name=params[ConstantValues.feature_configure_name],
                                     file_path=None)
-        self.__feature_conf = self.create_entity(
+        self.__feature_conf = self.__create_entity(
             entity_name=params[ConstantValues.feature_configure_name],
             **feature_conf_params
         )
@@ -69,7 +69,7 @@ class CoreRoute(Component):
                 loss_params = Bunch(
                     name=self.__loss_name
                 )
-                self.__loss = self.create_entity(
+                self.__loss = self.__create_entity(
                     entity_name=self.__loss_name,
                     **loss_params
                 )
@@ -79,7 +79,7 @@ class CoreRoute(Component):
             self.__metric_name = params[ConstantValues.metric_name]
             # create metric and set optimize_mode
             metric_params = Bunch(name=self.__metric_name)
-            self.__metric = self.create_entity(
+            self.__metric = self.__create_entity(
                 entity_name=self.__metric_name,
                 **metric_params
             )
@@ -98,7 +98,7 @@ class CoreRoute(Component):
                 final_file_path=None
             )
 
-            self.__auto_ml = self.create_component(
+            self.__auto_ml = self.__create_component(
                 component_name=params[ConstantValues.auto_ml_name],
                 **tuner_params
             )
@@ -120,7 +120,7 @@ class CoreRoute(Component):
                         selector_configure_path=self.__selector_configure_path
                     )
 
-                    self.__feature_selector = self.create_component(
+                    self.__feature_selector = self.__create_component(
                         component_name=params["supervised_selector_name"],
                         **s_params
                     )
@@ -138,7 +138,7 @@ class CoreRoute(Component):
                         selector_trial_num=params["selector_trial_num"]
                     )
 
-                    self.__feature_selector = self.create_component(
+                    self.__feature_selector = self.__create_component(
                         component_name=params["improved_supervised_selector_name"],
                         **s_params
                     )
@@ -154,10 +154,10 @@ class CoreRoute(Component):
                     )
 
                     model_params.init_model_root = params["init_model_root"]
-                    self.__selector_model = self.create_entity(entity_name="lightgbm", **selector_model_params)
+                    self.__selector_model = self.__create_entity(entity_name="lightgbm", **selector_model_params)
 
                     selector_metric_params = Bunch(name=self.__metric_name)
-                    self.__selector_metric = self.create_entity(
+                    self.__selector_metric = self.__create_entity(
                         entity_name=self.__metric_name,
                         **selector_metric_params
                     )
@@ -175,7 +175,7 @@ class CoreRoute(Component):
                         final_file_path=None
                     )
 
-                    self.__selector_auto_ml = self.create_component(
+                    self.__selector_auto_ml = self.__create_component(
                         component_name=params[ConstantValues.auto_ml_name],
                         **selector_tuner_params
                     )
@@ -190,7 +190,7 @@ class CoreRoute(Component):
             model_params.metric_eval_used_flag = False
             self.__result = None
 
-        self.__model = self.create_entity(entity_name=self.__model_name, **model_params)
+        self.__model = self.__create_entity(entity_name=self.__model_name, **model_params)
 
     def _train_run(self, **entity):
         assert ConstantValues.train_dataset in entity.keys()
@@ -348,7 +348,7 @@ class CoreRoute(Component):
         return self.__result
 
     @classmethod
-    def create_component(cls, component_name: str, **params):
+    def __create_component(cls, component_name: str, **params):
         """
         :param component_name:
         :param params:
@@ -359,7 +359,7 @@ class CoreRoute(Component):
         return component_factory.get_component(component_name=component_name, **params)
 
     @classmethod
-    def create_entity(cls, entity_name: str, **params):
+    def __create_entity(cls, entity_name: str, **params):
         """
 
         :param entity_name:

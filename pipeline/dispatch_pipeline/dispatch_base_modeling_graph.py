@@ -19,28 +19,28 @@ class BaseModelingGraph:
     """
     BaseModelingGraph object.
     """
-
     def __init__(self, **params):
         """
-
-        :param name:
-        :param work_root:
-        :param task_name:
-        :param metric_name:
-        :param train_data_path:
-        :param val_data_path:
-        :param target_names:
-        :param feature_configure_path:
-        :param dataset_name:
-        :param type_inference_name:
-        :param data_clear_name:
-        :param feature_generator_name:
-        :param unsupervised_feature_selector_name:
-        :param supervised_feature_selector_name:
-        :param auto_ml_name:
-        :param opt_model_names:
-        :param auto_ml_path:
-        :param selector_configure_path:
+        This object is base class for all pipelines,
+        all pipeline object except preprocessing chain and core chain should inherit it.
+        :param name: string object, pipeline name.
+        :param work_root: the name of root folder.
+        :param task_name: string object, task name.
+        :param metric_name: string object, name of the target metric object.
+        :param train_data_path: string object, path of train dataset.
+        :param val_data_path: string object, path of validation dataset.
+        :param target_names: list object, dataset label names or index.
+        :param feature_configure_path: path of user-define feature configure file.
+        :param dataset_name: name of dataset object.
+        :param type_inference_name: name of type inference component.
+        :param data_clear_name: name of data clear component.
+        :param feature_generator_name: name of feature generator component.
+        :param unsupervised_feature_selector_name: name of unsupervised feature selector component.
+        :param supervised_feature_selector_name: name of supervised feature selector component.
+        :param auto_ml_name: name of auto ml component.
+        :param opt_model_names: list object, names of hyperparameter algorithms.
+        :param auto_ml_path: root path of auto ml configure files.
+        :param selector_configure_path: root path of supervised feature selector.
         """
         assert params["opt_model_names"] is not None
 
@@ -58,35 +58,35 @@ class BaseModelingGraph:
             feature_configure_path=params[ConstantValues.feature_configure_path],
             auto_ml_path=params[ConstantValues.auto_ml_path],
             selector_configure_path=params[ConstantValues.selector_configure_path],
-            improved_selector_configure_path=params["improved_selector_configure_path"],
-            init_model_root=params["init_model_root"]
+            improved_selector_configure_path=params[ConstantValues.improved_selector_configure_path],
+            init_model_root=params[ConstantValues.init_model_root]
         )
 
         self._entity_names = Bunch(
-            dataset_name=params["dataset_name"],
-            metric_name=params["metric_name"],
+            dataset_name=params[ConstantValues.dataset_name],
+            metric_name=params[ConstantValues.metric_name],
             loss_name=params[ConstantValues.loss_name],
-            feature_configure_name=params["feature_configure_name"]
+            feature_configure_name=params[ConstantValues.feature_configure_name]
         )
 
         self._component_names = Bunch(
-            type_inference_name=params["type_inference_name"],
-            data_clear_name=params["data_clear_name"],
-            label_encoder_name=params["label_encoder_name"],
-            feature_generator_name=params["feature_generator_name"],
-            unsupervised_feature_selector_name=params["unsupervised_feature_selector_name"],
-            supervised_feature_selector_name=params["supervised_feature_selector_name"],
-            improved_supervised_feature_selector_name=params["improved_supervised_feature_selector_name"],
-            auto_ml_name=params["auto_ml_name"]
+            type_inference_name=params[ConstantValues.type_inference_name],
+            data_clear_name=params[ConstantValues.data_clear_name],
+            label_encoder_name=params[ConstantValues.label_encoder_name],
+            feature_generator_name=params[ConstantValues.feature_generator_name],
+            unsupervised_feature_selector_name=params[ConstantValues.unsupervised_feature_selector_name],
+            supervised_feature_selector_name=params[ConstantValues.supervised_feature_selector_name],
+            improved_supervised_feature_selector_name=params[ConstantValues.improved_supervised_feature_selector_name],
+            auto_ml_name=params[ConstantValues.auto_ml_name]
         )
 
         self._global_values = Bunch(
             dataset_weight_dict=params[ConstantValues.dataset_weight_dict],
-            use_weight_flag=params["use_weight_flag"],
-            weight_column_name=params["weight_column_name"],
-            train_column_name_flag=params["train_column_name_flag"],
-            val_column_name_flag=params["val_column_name_flag"],
-            data_file_type=params["data_file_type"],
+            use_weight_flag=params[ConstantValues.use_weight_flag],
+            weight_column_name=params[ConstantValues.weight_column_name],
+            train_column_name_flag=params[ConstantValues.train_column_name_flag],
+            val_column_name_flag=params[ConstantValues.val_column_name_flag],
+            data_file_type=params[ConstantValues.data_file_type],
             selector_trial_num=params["selector_trial_num"],
             auto_ml_trial_num=params["auto_ml_trial_num"],
             opt_model_names=params["opt_model_names"],
@@ -104,7 +104,7 @@ class BaseModelingGraph:
         )
 
         self._already_data_clear = None
-        self._model_need_clear_flag = params["model_need_clear_flag"]
+        self._model_need_clear_flag = params[ConstantValues.model_need_clear_flag]
         self._pipeline_configure = None
 
     @abc.abstractmethod

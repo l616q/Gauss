@@ -24,3 +24,25 @@ class NoResultReturnException(Exception):
 
     def __str__(self):
         return self.message
+
+class GeneralComponentException(Exception):
+    """
+    This exception will activate when no result
+    returns in a graph.
+    """
+    def __init__(self, msg):
+        self.message = msg
+
+    def __str__(self):
+        return self.message
+
+class GeneralEntityException(Exception):
+    """
+    This exception will activate when no result
+    returns in a graph.
+    """
+    def __init__(self, msg):
+        self.message = msg
+
+    def __str__(self):
+        return self.message
