@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright (c) 2020, Citic Inc. All rights reserved.
-# Authors: Lab
+"""-*- coding: utf-8 -*-
+
+Copyright (c) 2020, Citic Inc. All rights reserved.
+Authors: Lab"""
 import abc
 
 from gauss.component import Component
@@ -13,17 +13,26 @@ class BaseTypeInference(Component):
                  name: str,
                  train_flag: str,
                  task_name: str,
-                 source_file_path="null",
-                 final_file_path: str = './'):
-
-        self._source_file_path = source_file_path
-        self._final_file_path = final_file_path
-        self._update_flag = False
+                 source_file_path: str = None,
+                 final_file_path: str = None
+                 ):
+        """
+        BaseTypeInference object.
+        :param name: type inference name
+        :param task_name: str object, optional: binary_classification, multiclass_classification, regression
+        :param train_flag: str object, optional: train, increment, inference
+        :param source_file_path: input feature configure file path
+        :param final_file_path: output feature configure file path
+        """
         super(BaseTypeInference, self).__init__(
             name=name,
             train_flag=train_flag,
-            task_name=task_name
+            enable=True,
+            task_name=task_name,
+            source_file_path=source_file_path,
+            final_file_path=final_file_path
         )
+        self._update_flag = False
 
     @abc.abstractmethod
     def _dtype_inference(self, dataset: BaseDataset):
@@ -36,10 +45,6 @@ class BaseTypeInference(Component):
     @abc.abstractmethod
     def _check_target_columns(self, target: BaseDataset):
         pass
-
-    @property
-    def source_file_path(self):
-        return self._source_file_path
 
     def _train_run(self, **entity):
         pass

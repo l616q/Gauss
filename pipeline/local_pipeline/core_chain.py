@@ -93,7 +93,9 @@ class CoreRoute(Component):
                 auto_ml_trial_num=params[ConstantValues.auto_ml_trial_num],
                 opt_model_names=self.__opt_model_names,
                 optimize_mode=self.__optimize_mode,
-                auto_ml_path=self.__auto_ml_path
+                auto_ml_path=self.__auto_ml_path,
+                source_file_path=None,
+                final_file_path=None
             )
 
             self.__auto_ml = self.create_component(
@@ -110,8 +112,8 @@ class CoreRoute(Component):
                         name=params["supervised_selector_name"],
                         train_flag=self._train_flag,
                         enable=self._enable,
-                        task_name=params["task_name"],
-                        feature_configure_path=params["pre_feature_configure_path"],
+                        task_name=params[ConstantValues.task_name],
+                        source_file_path=params["pre_feature_configure_path"],
                         final_file_path=params["target_feature_configure_path"],
                         feature_selector_model_names=params["feature_selector_model_names"],
                         selector_trial_num=params["selector_trial_num"],
@@ -129,7 +131,7 @@ class CoreRoute(Component):
                         train_flag=self._train_flag,
                         enable=self._enable,
                         task_name=params["task_name"],
-                        feature_configure_path=params["pre_feature_configure_path"],
+                        source_file_path=params["pre_feature_configure_path"],
                         final_file_path=params["target_feature_configure_path"],
                         feature_selector_model_names=params["feature_selector_model_names"],
                         improved_selector_configure_path=params["improved_selector_configure_path"],
@@ -168,7 +170,9 @@ class CoreRoute(Component):
                         auto_ml_trial_num=params[ConstantValues.feature_model_trial],
                         opt_model_names=self.__opt_model_names,
                         optimize_mode=self.__optimize_mode,
-                        auto_ml_path=self.__auto_ml_path
+                        auto_ml_path=self.__auto_ml_path,
+                        source_file_path=None,
+                        final_file_path=None
                     )
 
                     self.__selector_auto_ml = self.create_component(

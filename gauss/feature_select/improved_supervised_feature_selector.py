@@ -51,9 +51,9 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
             train_flag=params[ConstantValues.train_flag],
             enable=params[ConstantValues.enable],
             task_name=params[ConstantValues.task_name],
-            feature_configure_path=params[ConstantValues.feature_configure_path]
+            source_file_path=params[ConstantValues.source_file_path],
+            final_file_path=params[ConstantValues.final_file_path]
         )
-        self._final_file_path = params[ConstantValues.final_file_path]
 
         self._optimize_mode = None
 
@@ -81,7 +81,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         selector_model_tuner = entity["selector_auto_ml"]
         feature_configure = entity["feature_configure"]
 
-        feature_configure.file_path = self._feature_configure_path
+        feature_configure.file_path = self._source_file_path
         feature_configure.parse(method="system")
         entity[ConstantValues.selector_model].update_feature_conf(feature_conf=feature_configure)
 
@@ -201,7 +201,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
                     get_current_memory_gb()["memory_usage"]
                 )
             )
-            feature_configure.file_path = self._feature_configure_path
+            feature_configure.file_path = self._source_file_path
 
             feature_configure.parse(method="system")
             feature_configure.feature_select(feature_list=feature_list,
@@ -264,7 +264,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         Write configure file
         :return:
         """
-        feature_conf = yaml_read(yaml_file=self._feature_configure_path)
+        feature_conf = yaml_read(yaml_file=self._source_file_path)
         logger.info("final_feature_names: %s", str(self._final_feature_names))
         for item in feature_conf.keys():
             if item not in self._final_feature_names:

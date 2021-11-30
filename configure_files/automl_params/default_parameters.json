@@ -58,6 +58,23 @@
 
     "max_iter": 10000
   },
+  "catboost": {
+    "thread_count": -1,
+
+    "learning_rate": 0.01,
+
+    "max_depth": 12,
+
+    "verbose": false,
+
+    "iterations": 600,
+
+    "subsample": 0.8,
+
+    "colsample_bylevel": 0.8,
+
+    "early_stopping_rounds": 5
+  },
 
   "dnn": {
     "validate_steps": 50,

@@ -8,6 +8,7 @@ from entity.dataset.plain_dataset import PlaintextDataset
 from entity.feature_configuration.feature_config import FeatureConf
 from entity.model.tree_model.gauss_lightgbm import GaussLightgbm
 from entity.model.tree_model.gauss_xgboost import GaussXgboost
+from entity.model.tree_model.guass_catboost import GaussCatboost
 from entity.metrics.udf_metric import AUC
 from entity.metrics.udf_metric import BinaryF1
 from entity.metrics.udf_metric import MulticlassF1
@@ -47,8 +48,10 @@ class EntityFactory(AbstractGauss):
             return GaussLightgbm(**params)
         elif entity_name.lower() == "xgboost":
             return GaussXgboost(**params)
-
-        raise ValueError("Entity factory can not construct entity by name: %s.", entity_name)
+        elif entity_name.lower() == "catboost":
+            return GaussCatboost(**params)
+        else:
+            raise ValueError("Entity factory can not construct entity by name: %s.", entity_name)
 
     def get_component(self, component_name: str):
         return None

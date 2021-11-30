@@ -22,21 +22,15 @@ from utils.yaml_exec import yaml_write
 
 
 class PlainTypeInference(BaseTypeInference):
-    """
-    1、如果存在某一列的特征是50%数字和50%的字母，这种id特征也是合理的，需要进行处理。
-    2、typeinference中，需要将噪声数据全部重置为缺失值。
-    """
     def __init__(self, **params):
         """
         TypeInference object can just change dataset, abnormal data in dataset will improve in PlainDataClear object.
-        :param name:
-        :param task_name:
-        :param train_flag:
-        :param source_file_path:
-        :param final_file_path:
-        :param final_file_prefix:
+        :param name: type inference name
+        :param task_name: str object, optional: binary_classification, multiclass_classification, regression
+        :param train_flag: str object, optional: train, increment, inference
+        :param source_file_path: input feature configure file path
+        :param final_file_path: output feature configure file path
         """
-
         super(PlainTypeInference, self).__init__(
             name=params[ConstantValues.name],
             train_flag=params[ConstantValues.train_flag],

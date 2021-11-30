@@ -16,16 +16,18 @@ class BaseLabelEncode(Component):
                  train_flag: str,
                  enable: bool,
                  task_name: str,
-                 feature_configure_path
+                 source_file_path: str,
+                 final_file_path: str
                  ):
 
         super().__init__(
             name=name,
             train_flag=train_flag,
             enable=enable,
-            task_name=task_name
+            task_name=task_name,
+            source_file_path=source_file_path,
+            final_file_path=final_file_path
         )
-        self._feature_configure_path = feature_configure_path
 
     def _train_run(self, **entity):
         pass
