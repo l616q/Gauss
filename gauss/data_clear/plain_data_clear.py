@@ -202,7 +202,8 @@ class PlainDataClear(BaseDataClear):
 
             self._impute_models[feature] = impute_model
             data[feature] = item_data
-
+        print(data)
+        assert 1 == 0
     def __clear_dataframe(self, dataset: BaseDataset):
         data = dataset.get_dataset().data
         feature_names = dataset.get_dataset().feature_names
