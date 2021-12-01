@@ -255,6 +255,7 @@ class PreprocessRoute(Component):
         logger.info("Starting data clear.")
         self.data_clear.run(**entity_dict)
         self._already_data_clear = self.data_clear.already_data_clear
+
         if self._already_data_clear is False \
                 and train_dataset.need_data_clear is True \
                 and self._feature_generator_flag is True:

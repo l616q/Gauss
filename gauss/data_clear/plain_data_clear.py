@@ -161,8 +161,6 @@ class PlainDataClear(BaseDataClear):
 
         assert isinstance(data, pd.DataFrame)
         self.__clear_dataframe(dataset=dataset)
-        print(dataset.get_dataset().data)
-        assert 1 == 0
         feature_conf = yaml_read(self._source_file_path)
 
         for feature in feature_names:
@@ -197,12 +195,7 @@ class PlainDataClear(BaseDataClear):
             elif "float" in str(item_data.dtype):
                 impute_model.fit(item_data.astype("float64"))
             else:
-                if "int" in item_conf["dtype"]:
-                    pass
-                elif "float" in item_conf["dtype"]:
-                    pass
-                else:
-                    impute_model.fit(item_data)
+                impute_model.fit(item_data)
 
             item_data = impute_model.transform(item_data)
             item_data = item_data.reshape(1, -1).squeeze(axis=0)

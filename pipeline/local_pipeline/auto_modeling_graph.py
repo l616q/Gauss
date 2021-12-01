@@ -17,10 +17,7 @@ from utils.bunch import Bunch
 from utils.check_dataset import check_data
 from utils.yaml_exec import yaml_write
 from utils.exception import PipeLineLogicError, NoResultReturnException
-from utils.Logger import logger
 from utils.constant_values import ConstantValues
-from utils.exception import GeneralEntityException
-from utils.exception import GeneralComponentException
 
 
 # This class is used to train model in fast module.
@@ -135,28 +132,11 @@ class AutoModelingGraph(BaseModelingGraph):
                  self._component_names[ConstantValues.type_inference_name],
              ConstantValues.model_zoo: self._model_zoo
              }
-        self.__report_configure = Bunch(
-            entity_configure=Bunch(
-                dataset=Bunch(),
-                feature_conf=Bunch(),
-                loss=Bunch(),
-                metric=Bunch(),
-                model=Bunch()
-            ),
-            component_configure=Bunch(
-                type_inference=Bunch(),
-                data_clear=Bunch(),
-                label_encode=Bunch(),
-                feature_generation=Bunch(),
-                unsupervised_feature_selector=Bunch(),
-                supervised_feature_selector=Bunch()
-            ),
-            global_configure=Bunch(
-                main_pipeline=Bunch()
-            )
-        )
+        self.__report_configure = None
 
     def _run_route(self, **params):
+        self.__init_report_configure()
+
         data_clear_flag = params[ConstantValues.data_clear_flag]
         if not isinstance(data_clear_flag, bool):
             raise TypeError(
@@ -260,7 +240,11 @@ class AutoModelingGraph(BaseModelingGraph):
 
              ConstantValues.label_encoder_feature_path: join(
                  work_feature_root,
-                 feature_dict.label_encoder_feature)
+                 feature_dict.label_encoder_feature),
+
+             ConstantValues.success_file_path : join(
+                 dispatch_model_root,
+                 feature_dict.success_file_name)
              }
 
         work_model_root = join(
@@ -307,18 +291,24 @@ class AutoModelingGraph(BaseModelingGraph):
 
         try:
             entity_dict = preprocess_chain.run()
-        except PipeLineLogicError as error:
-            self.__report_configure.main_pipeline.info = ""
+        except PipeLineLogicError:
+            self.__report_configure.main_pipeline.info = "Error: pipeline logic error happens in preprocessing chain."
             self.__report_configure.main_pipeline.success_flag = False
-        except (ValueError, TypeError, RuntimeError, IndexError, IOError, BaseException):
+        except (ValueError,
+                TypeError,
+                RuntimeError,
+                IndexError,
+                IOError,
+                BaseException):
             report_configure = preprocess_chain.report_configure
-            self.__report_configure.main_pipeline.info = ""
+            self.__report_configure.main_pipeline.info = "General error happens in preprocessing chain."
             self.__report_configure.main_pipeline.success_flag = False
             return report_configure
         finally:
             if not isinstance(entity_dict, dict):
-                self.__report_configure.main_pipeline.info = ""
+                self.__report_configure.main_pipeline.info = "Get illegal type of entity dict in preprocessing chain."
                 self.__report_configure.main_pipeline.success_flag = False
+
         self._already_data_clear = preprocess_chain.already_data_clear
 
         assert params.get(ConstantValues.model_name) is not None
@@ -358,10 +348,30 @@ class AutoModelingGraph(BaseModelingGraph):
             selector_configure_path=self._work_paths[ConstantValues.selector_configure_path]
         )
 
-        core_chain.run(**entity_dict)
+        try:
+            core_chain.run(**entity_dict)
+        except PipeLineLogicError:
+            self.__report_configure.main_pipeline.info = "Error: pipeline logic error happens in core chain."
+            self.__report_configure.main_pipeline.success_flag = False
+        except (ValueError,
+                TypeError,
+                RuntimeError,
+                IndexError,
+                IOError,
+                BaseException):
+            report_configure = preprocess_chain.report_configure
+            self.__report_configure.main_pipeline.info = "General error happens in core chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            return report_configure
+
         local_metric = core_chain.optimal_metric
 
         assert local_metric is not None
+        self.__report_configure.global_configure.success_flag = True
+
+        yaml_write(yaml_dict={},
+                   yaml_file=feature_dict[ConstantValues.success_file_path])
+
         return {"work_model_root": work_model_root,
                 "model_name": params.get(ConstantValues.model_name),
                 "increment_flag": False,
@@ -386,8 +396,7 @@ class AutoModelingGraph(BaseModelingGraph):
                 opt_model_names=opt_model_names,
                 model_name=model_name)
 
-            if local_result is not None:
-                train_results.append(local_result)
+            train_results.append(local_result)
 
         self._find_best_result(train_results=train_results)
 
@@ -533,3 +542,29 @@ class AutoModelingGraph(BaseModelingGraph):
             opt_model_names,
             model_zoo)
         return routes
+
+    def __init_report_configure(self):
+        self.__report_configure = Bunch(
+            entity_configure=Bunch(
+                dataset=Bunch(),
+                feature_conf=Bunch(),
+                loss=Bunch(),
+                metric=Bunch(),
+                model=Bunch()
+            ),
+            component_configure=Bunch(
+                type_inference=Bunch(),
+                data_clear=Bunch(),
+                label_encode=Bunch(),
+                feature_generation=Bunch(),
+                unsupervised_feature_selector=Bunch(),
+                supervised_feature_selector=Bunch()
+            ),
+            global_configure=Bunch(
+                main_pipeline=Bunch(),
+                success_flag=False
+            )
+        )
+
+    def report_configure(self):
+        return self.__report_configure
