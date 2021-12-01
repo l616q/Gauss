@@ -44,8 +44,9 @@ class PlainDataClear(BaseDataClear):
 
         # 序列化模型
         self._data_clear_configure_path = params["data_clear_configure_path"]
-        self._strategy_dict = params["strategy_dict"]
+        # self._strategy_dict = params["strategy_dict"]
         self._missing_values = np.nan
+        self._strategy_dict = {"model": {"name": "ftype"}, "category": {"name": 'mean'}, "numerical": {"name": "mean"}, "bool": {"name": "most_frequent"}, "datetime": {"name": "most_frequent"}}
 
         self._default_cat_impute_model = SimpleImputer(missing_values=self._missing_values,
                                                        strategy="most_frequent")
@@ -60,17 +61,17 @@ class PlainDataClear(BaseDataClear):
         if self._enable is True:
             self._already_data_clear = True
             assert ConstantValues.train_dataset in entity.keys()
-            logger.info("Running clean() method and clearing, " + "with current memory usage: %.2f GiB",
+            logger.info("Running clean() method and clearing, with current memory usage: %.2f GiB",
                         get_current_memory_gb()["memory_usage"])
             self._clean(dataset=entity["train_dataset"])
             self.__check_dtype(dataset=entity["train_dataset"])
         else:
             self._already_data_clear = False
-        logger.info("Data clearing feature configuration is generating, " + "with current memory usage: %.2f GiB",
+        logger.info("Data clearing feature configuration is generating, with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
         self.final_configure_generation()
 
-        logger.info("Data clearing impute models serializing, " + "with current memory usage: %.2f GiB",
+        logger.info("Data clearing impute models serializing, with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
         self._data_clear_serialize()
 
@@ -189,10 +190,10 @@ class PlainDataClear(BaseDataClear):
             item_data = item_data.reshape(-1, 1)
 
             # This block is used to avoid some warning in special running environment.
-            if "int" in item_conf["dtype"]:
-                impute_model.fit(item_data.astype(np.int64))
-            elif "float" in item_conf["dtype"]:
-                impute_model.fit(item_data.astype(np.float64))
+            if "int" in str(item_data.dtype):
+                impute_model.fit(item_data.astype("int64"))
+            elif "float" in str(item_data.dtype):
+                impute_model.fit(item_data.astype("float64"))
             else:
                 impute_model.fit(item_data)
 

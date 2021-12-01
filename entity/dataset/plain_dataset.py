@@ -314,13 +314,13 @@ class PlaintextDataset(BaseDataset):
         if self._name == ConstantValues.train_dataset or self._name == ConstantValues.val_dataset:
             self.__set_proportion()
             self.__set_weight()
-            if self._bunch.get(ConstantValues.dataset_weight) is not None:
-                self._bunch.data, self._bunch.target, self._bunch.dataset_weight = shuffle(
-                    self._bunch.data,
-                    self._bunch.target,
-                    self._bunch.dataset_weight)
-            else:
-                self._bunch.data, self._bunch.target = shuffle(self._bunch.data, self._bunch.target)
+            # if self._bunch.get(ConstantValues.dataset_weight) is not None:
+            #     self._bunch.data, self._bunch.target, self._bunch.dataset_weight = shuffle(
+            #         self._bunch.data,
+            #         self._bunch.target,
+            #         self._bunch.dataset_weight)
+            # else:
+            #     self._bunch.data, self._bunch.target = shuffle(self._bunch.data, self._bunch.target)
         elif self._name == ConstantValues.increment_dataset:
             self.__set_proportion()
             self._bunch.data, self._bunch.target = shuffle(self._bunch.data, self._bunch.target)
