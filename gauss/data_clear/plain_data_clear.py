@@ -161,8 +161,6 @@ class PlainDataClear(BaseDataClear):
 
         assert isinstance(data, pd.DataFrame)
         self.__clear_dataframe(dataset=dataset)
-        print(dataset.get_dataset().data)
-        assert 1 == 0
         feature_conf = yaml_read(self._source_file_path)
 
         for feature in feature_names:

@@ -128,6 +128,7 @@ class ConstantValues:
     pre_feature_configure_path = "pre_feature_configure_path"
     target_feature_configure_path = "target_feature_configure_path"
     out_put_path = "out_put_path"
+    success_file_path = "success_file_path"
     # pipeline name
     PreprocessRoute = "PreprocessRoute"
     CoreRoute = "CoreRoute"
