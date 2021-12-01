@@ -44,8 +44,9 @@ class PlainDataClear(BaseDataClear):
 
         # 序列化模型
         self._data_clear_configure_path = params["data_clear_configure_path"]
-        self._strategy_dict = params["strategy_dict"]
+        # self._strategy_dict = params["strategy_dict"]
         self._missing_values = np.nan
+        self._strategy_dict = {"model": {"name": "ftype"}, "category": {"name": 'mean'}, "numerical": {"name": "mean"}, "bool": {"name": "most_frequent"}, "datetime": {"name": "most_frequent"}}
 
         self._default_cat_impute_model = SimpleImputer(missing_values=self._missing_values,
                                                        strategy="most_frequent")
@@ -60,17 +61,17 @@ class PlainDataClear(BaseDataClear):
         if self._enable is True:
             self._already_data_clear = True
             assert ConstantValues.train_dataset in entity.keys()
-            logger.info("Running clean() method and clearing, " + "with current memory usage: %.2f GiB",
+            logger.info("Running clean() method and clearing, with current memory usage: %.2f GiB",
                         get_current_memory_gb()["memory_usage"])
             self._clean(dataset=entity["train_dataset"])
             self.__check_dtype(dataset=entity["train_dataset"])
         else:
             self._already_data_clear = False
-        logger.info("Data clearing feature configuration is generating, " + "with current memory usage: %.2f GiB",
+        logger.info("Data clearing feature configuration is generating, with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
         self.final_configure_generation()
 
-        logger.info("Data clearing impute models serializing, " + "with current memory usage: %.2f GiB",
+        logger.info("Data clearing impute models serializing, with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
         self._data_clear_serialize()
 
@@ -159,7 +160,9 @@ class PlainDataClear(BaseDataClear):
         feature_names = dataset.get_dataset().feature_names
 
         assert isinstance(data, pd.DataFrame)
-        self._aberrant_modify(data=data)
+        self.__clear_dataframe(dataset=dataset)
+        print(dataset.get_dataset().data)
+        assert 1 == 0
         feature_conf = yaml_read(self._source_file_path)
 
         for feature in feature_names:
@@ -189,18 +192,75 @@ class PlainDataClear(BaseDataClear):
             item_data = item_data.reshape(-1, 1)
 
             # This block is used to avoid some warning in special running environment.
-            if "int" in item_conf["dtype"]:
-                impute_model.fit(item_data.astype(np.int64))
-            elif "float" in item_conf["dtype"]:
-                impute_model.fit(item_data.astype(np.float64))
+            if "int" in str(item_data.dtype):
+                impute_model.fit(item_data.astype("int64"))
+            elif "float" in str(item_data.dtype):
+                impute_model.fit(item_data.astype("float64"))
             else:
-                impute_model.fit(item_data)
+                if "int" in item_conf["dtype"]:
+                    pass
+                elif "float" in item_conf["dtype"]:
+                    pass
+                else:
+                    impute_model.fit(item_data)
 
             item_data = impute_model.transform(item_data)
             item_data = item_data.reshape(1, -1).squeeze(axis=0)
 
             self._impute_models[feature] = impute_model
             data[feature] = item_data
+
+    def __clear_dataframe(self, dataset: BaseDataset):
+        data = dataset.get_dataset().data
+        feature_names = dataset.get_dataset().feature_names
+
+        assert isinstance(data, pd.DataFrame)
+        self._aberrant_modify(data=data)
+
+        feature_conf = yaml_read(self._source_file_path)
+
+        def convert_int(x):
+            if isinstance(x, int):
+                return x
+            elif isinstance(x, float):
+                if not np.isnan(x):
+                    return int(x)
+                else:
+                    return x
+            elif isinstance(x, str):
+                if len(x) > 0:
+                    try:
+                        return int(x)
+                    except ValueError:
+                        return int(x[0])
+                else:
+                    return x
+            else:
+                raise ValueError("Value: {} can not be converted to a int value.")
+
+        def convert_float(x):
+            if isinstance(x, float):
+                return x
+            elif isinstance(x, str):
+                return float(x)
+            else:
+                raise ValueError("Value: {} can not be converted to a float value.")
+
+        def convert_string(x):
+            if isinstance(x, str):
+                return x
+            else:
+                return str(x)
+
+        for feature in feature_names:
+            # feature configuration, dict type
+            item_conf = feature_conf[feature]
+            if "int" in item_conf["dtype"]:
+                data[feature] = data[feature].map(convert_int)
+            elif "float" in item_conf["dtype"]:
+                data[feature] = data[feature].map(convert_float)
+            else:
+                data[feature] = data[feature].map(convert_string)
 
     def _aberrant_modify(self, data: pd.DataFrame):
         feature_conf = yaml_read(self._source_file_path)

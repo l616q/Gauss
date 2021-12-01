@@ -182,24 +182,7 @@ class PreprocessRoute(Component):
             )
         )
 
-        self.__report_configure = Bunch(
-            entity_configure=Bunch(
-                dataset=Bunch(),
-                feature_conf=Bunch(),
-                loss=Bunch(),
-                metric=Bunch(),
-                model=Bunch()
-            ),
-            component_configure=Bunch(
-                type_inference=Bunch(),
-                data_clear=Bunch(),
-                label_encode=Bunch(),
-                feature_generation=Bunch(),
-                unsupervised_feature_selector=Bunch(),
-                supervised_feature_selector=Bunch()
-            ),
-            global_configure=Bunch()
-        )
+        self.__report_configure = params[ConstantValues.report_configure]
 
     @classmethod
     def create_component(cls, component_name: str, **params):

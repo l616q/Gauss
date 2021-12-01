@@ -286,7 +286,8 @@ class PlaintextDataset(BaseDataset):
                                      message=message)
                 raise IOError(message)
             except ValueError:
-                message = "Label: {} may not be in dataset file.".format(self._target_names)
+                message = "Value: file type is wrong, or label: {} may not be in dataset file.".format(
+                    self._target_names)
                 self.__callback_func(type_name="entity_configure",
                                      object_name="dataset",
                                      success_flag=False,
@@ -314,13 +315,13 @@ class PlaintextDataset(BaseDataset):
         if self._name == ConstantValues.train_dataset or self._name == ConstantValues.val_dataset:
             self.__set_proportion()
             self.__set_weight()
-            if self._bunch.get(ConstantValues.dataset_weight) is not None:
-                self._bunch.data, self._bunch.target, self._bunch.dataset_weight = shuffle(
-                    self._bunch.data,
-                    self._bunch.target,
-                    self._bunch.dataset_weight)
-            else:
-                self._bunch.data, self._bunch.target = shuffle(self._bunch.data, self._bunch.target)
+            # if self._bunch.get(ConstantValues.dataset_weight) is not None:
+            #     self._bunch.data, self._bunch.target, self._bunch.dataset_weight = shuffle(
+            #         self._bunch.data,
+            #         self._bunch.target,
+            #         self._bunch.dataset_weight)
+            # else:
+            #     self._bunch.data, self._bunch.target = shuffle(self._bunch.data, self._bunch.target)
         elif self._name == ConstantValues.increment_dataset:
             self.__set_proportion()
             self._bunch.data, self._bunch.target = shuffle(self._bunch.data, self._bunch.target)

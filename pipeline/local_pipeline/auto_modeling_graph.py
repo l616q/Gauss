@@ -12,6 +12,7 @@ from pipeline.local_pipeline.core_chain import CoreRoute
 from pipeline.local_pipeline.preprocess_chain import PreprocessRoute
 from pipeline.local_pipeline.mapping import EnvironmentConfigure
 from pipeline.local_pipeline.base_modeling_graph import BaseModelingGraph
+from utils.bunch import Bunch
 
 from utils.check_dataset import check_data
 from utils.yaml_exec import yaml_write
@@ -134,6 +135,26 @@ class AutoModelingGraph(BaseModelingGraph):
                  self._component_names[ConstantValues.type_inference_name],
              ConstantValues.model_zoo: self._model_zoo
              }
+        self.__report_configure = Bunch(
+            entity_configure=Bunch(
+                dataset=Bunch(),
+                feature_conf=Bunch(),
+                loss=Bunch(),
+                metric=Bunch(),
+                model=Bunch()
+            ),
+            component_configure=Bunch(
+                type_inference=Bunch(),
+                data_clear=Bunch(),
+                label_encode=Bunch(),
+                feature_generation=Bunch(),
+                unsupervised_feature_selector=Bunch(),
+                supervised_feature_selector=Bunch()
+            ),
+            global_configure=Bunch(
+                main_pipeline=Bunch()
+            )
+        )
 
     def _run_route(self, **params):
         data_clear_flag = params[ConstantValues.data_clear_flag]
@@ -247,6 +268,7 @@ class AutoModelingGraph(BaseModelingGraph):
             ConstantValues.model
         )
 
+        entity_dict = None
         feature_configure_root = join(work_model_root, ConstantValues.feature_configure)
         feature_dict[ConstantValues.final_feature_configure] = join(
             feature_configure_root,
@@ -279,18 +301,24 @@ class AutoModelingGraph(BaseModelingGraph):
             feature_generator_flag=feature_generator_flag,
             unsupervised_feature_selector_name=self._component_names[
                 ConstantValues.unsupervised_feature_selector_name],
-            unsupervised_feature_selector_flag=unsupervised_feature_selector_flag
+            unsupervised_feature_selector_flag=unsupervised_feature_selector_flag,
+            report_configure=self.__report_configure
         )
 
         try:
             entity_dict = preprocess_chain.run()
         except PipeLineLogicError as error:
-            logger.info(error)
-            return None
-        finally:
+            self.__report_configure.main_pipeline.info = ""
+            self.__report_configure.main_pipeline.success_flag = False
+        except (ValueError, TypeError, RuntimeError, IndexError, IOError, BaseException):
             report_configure = preprocess_chain.report_configure
-            print(report_configure)
-        assert 1 == 0
+            self.__report_configure.main_pipeline.info = ""
+            self.__report_configure.main_pipeline.success_flag = False
+            return report_configure
+        finally:
+            if not isinstance(entity_dict, dict):
+                self.__report_configure.main_pipeline.info = ""
+                self.__report_configure.main_pipeline.success_flag = False
         self._already_data_clear = preprocess_chain.already_data_clear
 
         assert params.get(ConstantValues.model_name) is not None
