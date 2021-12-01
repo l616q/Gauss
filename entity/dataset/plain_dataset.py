@@ -286,7 +286,8 @@ class PlaintextDataset(BaseDataset):
                                      message=message)
                 raise IOError(message)
             except ValueError:
-                message = "Label: {} may not be in dataset file.".format(self._target_names)
+                message = "Value: file type is wrong, or label: {} may not be in dataset file.".format(
+                    self._target_names)
                 self.__callback_func(type_name="entity_configure",
                                      object_name="dataset",
                                      success_flag=False,

@@ -160,7 +160,9 @@ class PlainDataClear(BaseDataClear):
         feature_names = dataset.get_dataset().feature_names
 
         assert isinstance(data, pd.DataFrame)
-        self._aberrant_modify(data=data)
+        self.__clear_dataframe(dataset=dataset)
+        print(dataset.get_dataset().data)
+        assert 1 == 0
         feature_conf = yaml_read(self._source_file_path)
 
         for feature in feature_names:
@@ -195,13 +197,70 @@ class PlainDataClear(BaseDataClear):
             elif "float" in str(item_data.dtype):
                 impute_model.fit(item_data.astype("float64"))
             else:
-                impute_model.fit(item_data)
+                if "int" in item_conf["dtype"]:
+                    pass
+                elif "float" in item_conf["dtype"]:
+                    pass
+                else:
+                    impute_model.fit(item_data)
 
             item_data = impute_model.transform(item_data)
             item_data = item_data.reshape(1, -1).squeeze(axis=0)
 
             self._impute_models[feature] = impute_model
             data[feature] = item_data
+
+    def __clear_dataframe(self, dataset: BaseDataset):
+        data = dataset.get_dataset().data
+        feature_names = dataset.get_dataset().feature_names
+
+        assert isinstance(data, pd.DataFrame)
+        self._aberrant_modify(data=data)
+
+        feature_conf = yaml_read(self._source_file_path)
+
+        def convert_int(x):
+            if isinstance(x, int):
+                return x
+            elif isinstance(x, float):
+                if not np.isnan(x):
+                    return int(x)
+                else:
+                    return x
+            elif isinstance(x, str):
+                if len(x) > 0:
+                    try:
+                        return int(x)
+                    except ValueError:
+                        return int(x[0])
+                else:
+                    return x
+            else:
+                raise ValueError("Value: {} can not be converted to a int value.")
+
+        def convert_float(x):
+            if isinstance(x, float):
+                return x
+            elif isinstance(x, str):
+                return float(x)
+            else:
+                raise ValueError("Value: {} can not be converted to a float value.")
+
+        def convert_string(x):
+            if isinstance(x, str):
+                return x
+            else:
+                return str(x)
+
+        for feature in feature_names:
+            # feature configuration, dict type
+            item_conf = feature_conf[feature]
+            if "int" in item_conf["dtype"]:
+                data[feature] = data[feature].map(convert_int)
+            elif "float" in item_conf["dtype"]:
+                data[feature] = data[feature].map(convert_float)
+            else:
+                data[feature] = data[feature].map(convert_string)
 
     def _aberrant_modify(self, data: pd.DataFrame):
         feature_conf = yaml_read(self._source_file_path)
