@@ -195,18 +195,15 @@ class PlainDataClear(BaseDataClear):
             elif "float" in str(item_data.dtype):
                 impute_model.fit(item_data.astype("float64"))
             else:
-                if "int" in item_conf["dtype"]:
-                    pass
-                elif "float" in item_conf["dtype"]:
-                    pass
-                else:
-                    impute_model.fit(item_data)
+                impute_model.fit(item_data)
 
             item_data = impute_model.transform(item_data)
+            print(item_data)
             item_data = item_data.reshape(1, -1).squeeze(axis=0)
 
             self._impute_models[feature] = impute_model
             data[feature] = item_data
+        assert 1 == 0
 
     def __clear_dataframe(self, dataset: BaseDataset):
         data = dataset.get_dataset().data
