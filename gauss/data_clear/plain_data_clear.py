@@ -198,12 +198,10 @@ class PlainDataClear(BaseDataClear):
                 impute_model.fit(item_data)
 
             item_data = impute_model.transform(item_data)
-            print(item_data)
             item_data = item_data.reshape(1, -1).squeeze(axis=0)
 
             self._impute_models[feature] = impute_model
             data[feature] = item_data
-        assert 1 == 0
 
     def __clear_dataframe(self, dataset: BaseDataset):
         data = dataset.get_dataset().data
