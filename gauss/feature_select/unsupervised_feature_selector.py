@@ -35,6 +35,7 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
             source_file_path=params[ConstantValues.source_file_path],
             final_file_path=params[ConstantValues.final_file_path])
 
+        self.__callback_func = params[ConstantValues.callback_func]
         self._feature_conf = None
 
     def _train_run(self, **entity):
@@ -68,6 +69,12 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
         dataset.get_dataset().generated_feature_names = list(data.columns)
         self.__final_configure_generation(dataset=dataset)
 
+        message = "Unsupervised feature selector executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="unsupervised_feature_selector",
+                             success_flag=True,
+                             message=message)
+
     def _increment_run(self, **entity):
         assert ConstantValues.increment_dataset in entity.keys()
 
@@ -79,6 +86,12 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
             dataset.get_dataset().data = dataset.get_dataset().data[generated_feature_names]
             dataset.get_dataset().generated_feature_names = generated_feature_names
 
+        message = "Unsupervised feature selector executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="unsupervised_feature_selector",
+                             success_flag=True,
+                             message=message)
+
     def _predict_run(self, **entity):
         assert "infer_dataset" in entity.keys()
 
@@ -89,6 +102,12 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
             generated_feature_names = generate_feature_list(feature_conf=conf)
             dataset.get_dataset().data = dataset.get_dataset().data[generated_feature_names]
             dataset.get_dataset().generated_feature_names = generated_feature_names
+
+        message = "Unsupervised feature selector executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="unsupervised_feature_selector",
+                             success_flag=True,
+                             message=message)
 
     @classmethod
     def __chi2_method(cls, features, target, k):
@@ -129,6 +148,7 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
         # logger.info("Starting to remove_highly_correlated_features, " + "with current memory usage: %.2f GiB",
         #                     get_current_memory_gb()["memory_usage"])
         # self.remove_highly_correlated_features(features)
+
         logger.info(
             "Unsupervised feature selecting has finished, " + "with current memory usage: %.2f GiB, total features: %d",
             get_current_memory_gb()["memory_usage"], len(features.columns))
@@ -164,8 +184,7 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
         features = list(set(columns).difference(set(features)))
         feature_matrix.drop(features, axis=1, inplace=True)
 
-    @classmethod
-    def __remove_highly_null_features(cls,
+    def __remove_highly_null_features(self,
                                       feature_matrix,
                                       pct_null_threshold=0.95):
         """
@@ -183,7 +202,13 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
                     If no feature list is provided as input, the feature list will not be returned.
         """
         if pct_null_threshold < 0 or pct_null_threshold > 1:
-            raise ValueError("pct_null_threshold must be a float between 0 and 1, inclusive.")
+            message = "pct_null_threshold must be a float between 0 and 1, inclusive."
+            self.__callback_func(type_name="component_configure",
+                                 object_name="unsupervised_feature_selector",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
+
         columns = feature_matrix.columns
         percent_null_by_col = {}
         for feature in columns:
@@ -227,8 +252,7 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
         features = list(set(columns).difference(set(keep)))
         feature_matrix.drop(features, axis=1, inplace=True)
 
-    @classmethod
-    def __remove_highly_correlated_features(cls,
+    def __remove_highly_correlated_features(self,
                                             feature_matrix,
                                             pct_corr_threshold=0.95,
                                             features_to_check=None,
@@ -263,13 +287,24 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
                     do not change the order of features outputted by dfs.
         """
         if pct_corr_threshold < 0 or pct_corr_threshold > 1:
-            raise ValueError("pct_corr_threshold must be a float between 0 and 1, inclusive.")
+            message = "pct_corr_threshold must be a float between 0 and 1, inclusive."
+            self.__callback_func(type_name="component_configure",
+                                 object_name="unsupervised_feature_selector",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         if features_to_check is None:
             features_to_check = feature_matrix.columns
         else:
             for f_name in features_to_check:
-                assert f_name in feature_matrix.columns, "feature named {} is not in feature matrix".format(f_name)
+                if f_name not in feature_matrix.columns:
+                    message = "feature named {} is not in feature matrix".format(f_name)
+                    self.__callback_func(type_name="component_configure",
+                                         object_name="unsupervised_feature_selector",
+                                         success_flag=False,
+                                         message=message)
+                    raise ValueError(message)
 
         if features_to_keep is None:
             features_to_keep = []

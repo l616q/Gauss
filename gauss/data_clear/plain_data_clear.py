@@ -17,7 +17,6 @@ from entity.dataset.base_dataset import BaseDataset
 from utils.base import get_current_memory_gb
 from utils.bunch import Bunch
 from utils.yaml_exec import yaml_read
-from utils.reduce_data import reduce_data
 from utils.Logger import logger
 from utils.constant_values import ConstantValues
 
@@ -34,7 +33,6 @@ class PlainDataClear(BaseDataClear):
         2 > {"model": {"name": "feature"}, "feature 1": {"name": 'most_frequent'}, "feature 2": {"name": 'constant', "fill_value": 0}}
         But you can just use one of them, PlainDataClear object will use strict coding check programming.
         """
-
         super(PlainDataClear, self).__init__(name=params[ConstantValues.name],
                                              train_flag=params[ConstantValues.train_flag],
                                              enable=params[ConstantValues.enable],
@@ -42,11 +40,11 @@ class PlainDataClear(BaseDataClear):
                                              source_file_path=params[ConstantValues.source_file_path],
                                              final_file_path=params[ConstantValues.final_file_path])
 
-        # 序列化模型
+        self.__callback_func = params[ConstantValues.callback_func]
+
         self._data_clear_configure_path = params["data_clear_configure_path"]
-        # self._strategy_dict = params["strategy_dict"]
+        self._strategy_dict = params["strategy_dict"]
         self._missing_values = np.nan
-        self._strategy_dict = {"model": {"name": "ftype"}, "category": {"name": 'mean'}, "numerical": {"name": "mean"}, "bool": {"name": "most_frequent"}, "datetime": {"name": "most_frequent"}}
 
         self._default_cat_impute_model = SimpleImputer(missing_values=self._missing_values,
                                                        strategy="most_frequent")
@@ -75,12 +73,18 @@ class PlainDataClear(BaseDataClear):
                     get_current_memory_gb()["memory_usage"])
         self._data_clear_serialize()
 
+        message = "Plain data clear executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="data_clear",
+                             success_flag=True,
+                             message=message)
+
     def __check_dtype(self, dataset: BaseDataset):
         feature_conf = yaml_read(self._source_file_path)
         data = dataset.get_dataset().data
         for item in feature_conf.keys():
             item_configure = Bunch(**feature_conf[item])
-            if "category" in item_configure["ftype"]:
+            if "category" in item_configure["ftype"] or "datetime" in item_configure["ftype"]:
                 data[item_configure.name] = data[item_configure["name"]].astype("category")
             else:
                 if "int" in item_configure["dtype"]:
@@ -88,10 +92,13 @@ class PlainDataClear(BaseDataClear):
                 elif "float" in item_configure["dtype"]:
                     data[item_configure.name] = data[item_configure["name"]].astype("float64")
                 else:
-                    raise ValueError(
-                        "Feature: {} is not category ftype, but its dtype is numerical.".format(
-                            item_configure.name))
-        reduce_data(dataframe=data)
+                    message = "Feature: {} is not category ftype, but its dtype is numerical.".format(
+                            item_configure.name)
+                    self.__callback_func(type_name="component_configure",
+                                         object_name="data_clear",
+                                         success_flag=False,
+                                         message=message)
+                    raise ValueError(message)
 
     def _increment_run(self, **entity):
         assert ConstantValues.increment_dataset in entity.keys()
@@ -124,6 +131,12 @@ class PlainDataClear(BaseDataClear):
                     data[col] = item_data.reshape(1, -1).squeeze(axis=0)
         self.__check_dtype(dataset=dataset)
 
+        message = "Plain data clear executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="data_clear",
+                             success_flag=True,
+                             message=message)
+
     def _predict_run(self, **entity):
         assert "infer_dataset" in entity.keys()
         dataset = entity["infer_dataset"]
@@ -155,6 +168,12 @@ class PlainDataClear(BaseDataClear):
                     data[col] = item_data.reshape(1, -1).squeeze(axis=0)
         self.__check_dtype(dataset=dataset)
 
+        message = "Plain data clear executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="data_clear",
+                             success_flag=True,
+                             message=message)
+
     def _clean(self, dataset: BaseDataset):
         data = dataset.get_dataset().data
         feature_names = dataset.get_dataset().feature_names
@@ -165,7 +184,6 @@ class PlainDataClear(BaseDataClear):
 
         for feature in feature_names:
             item_data = np.array(data[feature])
-            # feature configuration, dict type
             item_conf = feature_conf[feature]
 
             if self._strategy_dict is not None:
@@ -229,7 +247,12 @@ class PlainDataClear(BaseDataClear):
                 else:
                     return x
             else:
-                raise ValueError("Value: {} can not be converted to a int value.")
+                message = "Value: {} can not be converted to a int value."
+                self.__callback_func(type_name="component_configure",
+                                     object_name="data_clear",
+                                     success_flag=False,
+                                     message=message)
+                raise ValueError(message)
 
         def convert_float(x):
             if isinstance(x, float):
@@ -237,7 +260,12 @@ class PlainDataClear(BaseDataClear):
             elif isinstance(x, str):
                 return float(x)
             else:
-                raise ValueError("Value: {} can not be converted to a float value.")
+                message = "Value: {} can not be converted to a float value."
+                self.__callback_func(type_name="component_configure",
+                                     object_name="data_clear",
+                                     success_flag=False,
+                                     message=message)
+                raise ValueError(message)
 
         def convert_string(x):
             if isinstance(x, str):

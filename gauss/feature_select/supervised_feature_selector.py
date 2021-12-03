@@ -47,7 +47,6 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
         :param selector_config_path: root path of supervised selector configure files
         :param metrics_name: Construct BaseMetric object by entity factory.
         """
-
         super().__init__(
             name=params[ConstantValues.name],
             train_flag=params[ConstantValues.train_flag],
@@ -57,6 +56,7 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
             final_file_path=params[ConstantValues.final_file_path]
         )
 
+        self.__callback_func = params[ConstantValues.callback_func]
         self._selector_config_path = params[ConstantValues.selector_configure_path]
 
         self._optimize_mode = None
@@ -181,9 +181,14 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
         model_tuner.automl_final_set = False
 
         model = entity["model"]
-        assert isinstance(model, ModelWrapper), \
-            "Object: model should be type ModelWrapper, but get {} instead.".format(
+        if not isinstance(model, ModelWrapper):
+            message = "Object: model should be type ModelWrapper, but get {} instead.".format(
                 type(model))
+            self.__callback_func(type_name="component_configure",
+                                 object_name="supervised_feature_selector",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         selector_tuner = HyperoptTuner(
             algorithm_name="tpe",
@@ -304,11 +309,27 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
         self._final_feature_names = model.feature_list
         self.final_configure_generation()
 
+        message = "Supervised feature selector executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="supervised_feature_selector",
+                             success_flag=True,
+                             message=message)
+
     def _increment_run(self, **entity):
-        raise RuntimeError("Class: SupervisedFeatureSelector has no increment function.")
+        message = "Class: SupervisedFeatureSelector has no increment function."
+        self.__callback_func(type_name="component_configure",
+                             object_name="supervised_feature_selector",
+                             success_flag=False,
+                             message=message)
+        raise RuntimeError(message)
 
     def _predict_run(self, **entity):
-        raise RuntimeError("Class: SupervisedFeatureSelector has no predict function.")
+        message = "Class: SupervisedFeatureSelector has no predict function."
+        self.__callback_func(type_name="component_configure",
+                             object_name="supervised_feature_selector",
+                             success_flag=False,
+                             message=message)
+        raise RuntimeError(message)
 
     @property
     def optimal_metric(self):

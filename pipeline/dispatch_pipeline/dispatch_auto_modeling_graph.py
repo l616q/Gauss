@@ -10,6 +10,7 @@ from pipeline.dispatch_pipeline.dispatch_core_chain import CoreRoute
 from pipeline.dispatch_pipeline.dispatch_preprocess_chain import PreprocessRoute
 from pipeline.dispatch_pipeline.dispatch_mapping import EnvironmentConfigure
 from pipeline.dispatch_pipeline.dispatch_base_modeling_graph import BaseModelingGraph
+from utils.bunch import Bunch
 
 from utils.check_dataset import check_data
 from utils.yaml_exec import yaml_write
@@ -401,3 +402,63 @@ class AutoModelingGraph(BaseModelingGraph):
             return PreprocessRoute(**params)
         if name == ConstantValues.CoreRoute:
             return CoreRoute(**params)
+
+    def __init_report_configure(self):
+        self.__report_configure = Bunch(
+            entity_configure=Bunch(
+                dataset=Bunch(),
+                feature_conf=Bunch(),
+                loss=Bunch(),
+                metric=Bunch(),
+                model=Bunch()
+            ),
+            component_configure=Bunch(
+                type_inference=Bunch(),
+                data_clear=Bunch(),
+                label_encode=Bunch(),
+                feature_generation=Bunch(),
+                unsupervised_feature_selector=Bunch(),
+                supervised_feature_selector=Bunch()
+            ),
+            main_pipeline=Bunch(),
+            success_flag=None
+        )
+
+    def report_configure(self):
+        return self.__report_configure
+
+    @classmethod
+    def __replace_type(cls, report_configure: dict):
+        """
+        This method will replace folder name in a json dict by recursion method.
+        :param report_configure: Bunch object.
+        :return: dict object.
+        """
+        if isinstance(report_configure, Bunch):
+            report_configure = dict(report_configure)
+
+        for key in report_configure.keys():
+            if isinstance(report_configure[key], Bunch):
+                report_configure[key] = dict(report_configure[key])
+                cls.__replace_type(
+                    report_configure=report_configure[key]
+                )
+        return report_configure
+
+    @classmethod
+    def __restore_type(cls, report_configure: dict):
+        """
+        This method will replace folder name in a json dict by recursion method.
+        :param report_configure: Bunch object.
+        :return: dict object.
+        """
+        if not isinstance(report_configure, Bunch) and isinstance(report_configure, dict):
+            report_configure = Bunch(**report_configure)
+
+        for key in report_configure.keys():
+            if not isinstance(report_configure[key], Bunch) and isinstance(report_configure[key], dict):
+                report_configure[key] = Bunch(**report_configure[key])
+                cls.__restore_type(
+                    report_configure=report_configure[key]
+                )
+        return report_configure

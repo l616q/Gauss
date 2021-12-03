@@ -55,6 +55,8 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
             final_file_path=params[ConstantValues.final_file_path]
         )
 
+        self.__callback_func = params[ConstantValues.callback_func]
+
         self._optimize_mode = None
 
         # max trail num for selector tuner
@@ -96,7 +98,14 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         selector_entity["model"].set_best_model()
         selector = selector_entity["model"].model
 
-        assert isinstance(selector, lgb.Booster)
+        if not isinstance(selector, lgb.Booster):
+            message = "Selector should be type of lgb.Booster, but get {} instead.".format(type(selector))
+            self.__callback_func(type_name="component_configure",
+                                 object_name="supervised_feature_selector",
+                                 success_flag=False,
+                                 message=message)
+            raise TypeError(message)
+
         feature_name_list = selector.feature_name()
         importance_list = list(selector.feature_importance())
         feature_importance_pair = [(fe, round(im, 2)) for fe, im in zip(feature_name_list, importance_list)]
@@ -113,17 +122,24 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
             "Starting training supervised selectors, with current memory usage: %.2f GiB",
             get_current_memory_gb()["memory_usage"]
         )
-
-        assert "train_dataset" in entity.keys()
-        assert "val_dataset" in entity.keys()
-        assert "model" in entity.keys()
-        assert "metric" in entity.keys()
-        assert "auto_ml" in entity.keys()
-        assert "feature_configure" in entity.keys()
-        assert "loss" in entity.keys()
-        assert "selector_model" in entity.keys()
-        assert "selector_auto_ml" in entity.keys()
-        assert "selector_metric" in entity.keys()
+        try:
+            assert "train_dataset" in entity.keys()
+            assert "val_dataset" in entity.keys()
+            assert "model" in entity.keys()
+            assert "metric" in entity.keys()
+            assert "auto_ml" in entity.keys()
+            assert "feature_configure" in entity.keys()
+            assert "loss" in entity.keys()
+            assert "selector_model" in entity.keys()
+            assert "selector_auto_ml" in entity.keys()
+            assert "selector_metric" in entity.keys()
+        except AssertionError:
+            message = "At least an entity or Component is lost."
+            self.__callback_func(type_name="component_configure",
+                                 object_name="supervised_feature_selector",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         feature_importance_pair = self.__select_through_tree(**entity)
 
@@ -248,16 +264,35 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         if isinstance(train_dataset.get_dataset().data, pd.DataFrame):
             self.__generate_final_configure()
         else:
-            raise TypeError(
-                "Training data must be type: pd.Dataframe but get {} instead".format(
+            message = "Training data must be type: pd.Dataframe but get {} instead".format(
                     type(train_dataset.get_dataset().data))
-            )
+            self.__callback_func(type_name="component_configure",
+                                 object_name="supervised_feature_selector",
+                                 success_flag=False,
+                                 message=message)
+            raise TypeError(message)
+
+        message = "Supervised feature selector executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="supervised_feature_selector",
+                             success_flag=True,
+                             message=message)
 
     def _increment_run(self, **entity):
-        pass
+        message = "Class: SupervisedFeatureSelector has no increment function."
+        self.__callback_func(type_name="component_configure",
+                             object_name="supervised_feature_selector",
+                             success_flag=False,
+                             message=message)
+        raise RuntimeError(message)
 
     def _predict_run(self, **entity):
-        pass
+        message = "Class: SupervisedFeatureSelector has no predict function."
+        self.__callback_func(type_name="component_configure",
+                             object_name="supervised_feature_selector",
+                             success_flag=False,
+                             message=message)
+        raise RuntimeError(message)
 
     def __generate_final_configure(self):
         """

@@ -27,7 +27,7 @@ class NoResultReturnException(Exception):
 
 class GeneralComponentException(Exception):
     """
-    This exception will activate when no result
+    This exception will activate when no result.
     returns in a graph.
     """
     def __init__(self, msg):
@@ -38,7 +38,18 @@ class GeneralComponentException(Exception):
 
 class GeneralEntityException(Exception):
     """
-    This exception will activate when no result
+    This exception will activate when no result.
+    returns in a graph.
+    """
+    def __init__(self, msg):
+        self.message = msg
+
+    def __str__(self):
+        return self.message
+
+class GeneralPipelineException(Exception):
+    """
+    This exception will activate when general error happens in main pipeline.
     returns in a graph.
     """
     def __init__(self, msg):
