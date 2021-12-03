@@ -4,6 +4,7 @@ Copyright (c) 2021, Citic-Lab. All rights reserved.
 Authors: Lab"""
 from __future__ import annotations
 
+import shutil
 from os.path import join
 import itertools
 
@@ -477,9 +478,8 @@ class AutoModelingGraph(BaseModelingGraph):
                    yaml_file=join(self._work_paths["work_root"], feature_dict.success_file_name))
 
     def __delete_generated_folder(self, temp_id):
-        # folder_path = join(self._work_paths["work_root"], temp_id)
-        # shutil.rmtree(folder_path)
-        pass
+        folder_path = join(self._work_paths["work_root"], temp_id)
+        shutil.rmtree(folder_path)
 
     @property
     def pipeline_configure(self):
