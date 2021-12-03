@@ -4,7 +4,6 @@ Copyright (c) 2021, Citic-Lab. All rights reserved.
 Authors: Lab"""
 from __future__ import annotations
 
-import shutil
 from os.path import join
 import itertools
 
@@ -242,7 +241,7 @@ class AutoModelingGraph(BaseModelingGraph):
                  work_feature_root,
                  feature_dict.label_encoder_feature),
 
-             ConstantValues.success_file_path : join(
+             ConstantValues.success_file_path: join(
                  dispatch_model_root,
                  feature_dict.success_file_name)
              }
@@ -252,7 +251,6 @@ class AutoModelingGraph(BaseModelingGraph):
             ConstantValues.model
         )
 
-        entity_dict = None
         feature_configure_root = join(work_model_root, ConstantValues.feature_configure)
         feature_dict[ConstantValues.final_feature_configure] = join(
             feature_configure_root,
@@ -294,6 +292,7 @@ class AutoModelingGraph(BaseModelingGraph):
         except PipeLineLogicError:
             self.__report_configure.main_pipeline.info = "Error: pipeline logic error happens in preprocessing chain."
             self.__report_configure.main_pipeline.success_flag = False
+            return self.__report_configure
         except (ValueError,
                 TypeError,
                 RuntimeError,
@@ -301,13 +300,19 @@ class AutoModelingGraph(BaseModelingGraph):
                 IOError,
                 BaseException):
             report_configure = preprocess_chain.report_configure
+            self.__report_configure.update(report_configure)
             self.__report_configure.main_pipeline.info = "General error happens in preprocessing chain."
             self.__report_configure.main_pipeline.success_flag = False
-            return report_configure
-        finally:
-            if not isinstance(entity_dict, dict):
-                self.__report_configure.main_pipeline.info = "Get illegal type of entity dict in preprocessing chain."
-                self.__report_configure.main_pipeline.success_flag = False
+            return self.__report_configure
+
+        report_configure = preprocess_chain.report_configure
+
+        if not isinstance(entity_dict, dict):
+            self.__report_configure.main_pipeline.info = "Get illegal type of entity dict in preprocessing chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            self.__report_configure.update(report_configure)
+            return self.__report_configure
+        self.__report_configure.update(report_configure)
 
         self._already_data_clear = preprocess_chain.already_data_clear
 
@@ -315,7 +320,10 @@ class AutoModelingGraph(BaseModelingGraph):
         # 如果未进行数据清洗, 并且模型需要数据清洗, 则返回None.
         if check_data(already_data_clear=self._already_data_clear,
                       model_need_clear_flag=self._model_need_clear_flag.get(model_name)) is not True:
-            return None
+            self.__report_configure.main_pipeline.info = "Get illegal type of entity dict in auto modeling chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            self.__report_configure.update(report_configure)
+            return self.__report_configure
 
         assert ConstantValues.train_dataset in entity_dict and ConstantValues.val_dataset in entity_dict
 
@@ -345,31 +353,38 @@ class AutoModelingGraph(BaseModelingGraph):
             auto_ml_trial_num=self._global_values[ConstantValues.auto_ml_trial_num],
             auto_ml_path=self._work_paths[ConstantValues.auto_ml_path],
             opt_model_names=opt_model_names,
-            selector_configure_path=self._work_paths[ConstantValues.selector_configure_path]
+            selector_configure_path=self._work_paths[ConstantValues.selector_configure_path],
+            report_configure=self.__report_configure
         )
 
         try:
             core_chain.run(**entity_dict)
+            report_configure = preprocess_chain.report_configure
         except PipeLineLogicError:
             self.__report_configure.main_pipeline.info = "Error: pipeline logic error happens in core chain."
             self.__report_configure.main_pipeline.success_flag = False
+            self.__report_configure.update(report_configure)
+            return self.__report_configure
         except (ValueError,
                 TypeError,
                 RuntimeError,
                 IndexError,
                 IOError,
                 BaseException):
-            report_configure = preprocess_chain.report_configure
-            self.__report_configure.main_pipeline.info = "General error happens in core chain."
+            self.__report_configure.update(report_configure)
+            self.__report_configure.main_pipeline.info = "General error happens in preprocessing chain."
             self.__report_configure.main_pipeline.success_flag = False
-            return report_configure
+            return self.__report_configure
 
         local_metric = core_chain.optimal_metric
 
         assert local_metric is not None
-        self.__report_configure.global_configure.success_flag = True
 
-        yaml_write(yaml_dict={},
+        self.__report_configure.main_pipeline.success_flag = True
+        self.__report_configure.main_pipeline.info = "Generate model successfully."
+
+        report_configure = self.__replace_type(report_configure=self.__report_configure)
+        yaml_write(yaml_dict=report_configure,
                    yaml_file=feature_dict[ConstantValues.success_file_path])
 
         return {"work_model_root": work_model_root,
@@ -396,13 +411,15 @@ class AutoModelingGraph(BaseModelingGraph):
                 opt_model_names=opt_model_names,
                 model_name=model_name)
 
-            train_results.append(local_result)
+            if self.__report_configure.main_pipeline.success_flag is True:
+                train_results.append(local_result)
 
         self._find_best_result(train_results=train_results)
 
     def _find_best_result(self, train_results):
         best_result = {}
         best_id = []
+
         if len(train_results) == 0:
             raise NoResultReturnException("No model is trained successfully.")
 
@@ -452,12 +469,17 @@ class AutoModelingGraph(BaseModelingGraph):
 
         yaml_write(yaml_dict=yaml_dict,
                    yaml_file=join(self._work_paths["work_root"], feature_dict.pipeline_configure))
-        yaml_write(yaml_dict={},
+
+        self.__report_configure.success_flag = True
+
+        report_configure = self.__replace_type(report_configure=self.__report_configure)
+        yaml_write(yaml_dict=report_configure,
                    yaml_file=join(self._work_paths["work_root"], feature_dict.success_file_name))
 
     def __delete_generated_folder(self, temp_id):
-        folder_path = join(self._work_paths["work_root"], temp_id)
-        shutil.rmtree(folder_path)
+        # folder_path = join(self._work_paths["work_root"], temp_id)
+        # shutil.rmtree(folder_path)
+        pass
 
     @property
     def pipeline_configure(self):
@@ -560,11 +582,45 @@ class AutoModelingGraph(BaseModelingGraph):
                 unsupervised_feature_selector=Bunch(),
                 supervised_feature_selector=Bunch()
             ),
-            global_configure=Bunch(
-                main_pipeline=Bunch(),
-                success_flag=False
-            )
+            main_pipeline=Bunch(),
+            success_flag=None
         )
 
     def report_configure(self):
         return self.__report_configure
+
+    @classmethod
+    def __replace_type(cls, report_configure: dict):
+        """
+        This method will replace folder name in a json dict by recursion method.
+        :param report_configure: Bunch object.
+        :return: dict object.
+        """
+        if isinstance(report_configure, Bunch):
+            report_configure = dict(report_configure)
+
+        for key in report_configure.keys():
+            if isinstance(report_configure[key], Bunch):
+                report_configure[key] = dict(report_configure[key])
+                cls.__replace_type(
+                    report_configure=report_configure[key]
+                )
+        return report_configure
+
+    @classmethod
+    def __restore_type(cls, report_configure: dict):
+        """
+        This method will replace folder name in a json dict by recursion method.
+        :param report_configure: Bunch object.
+        :return: dict object.
+        """
+        if not isinstance(report_configure, Bunch) and isinstance(report_configure, dict):
+            report_configure = Bunch(**report_configure)
+
+        for key in report_configure.keys():
+            if not isinstance(report_configure[key], Bunch) and isinstance(report_configure[key], dict):
+                report_configure[key] = Bunch(**report_configure[key])
+                cls.__restore_type(
+                    report_configure=report_configure[key]
+                )
+        return report_configure

@@ -34,6 +34,8 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
             final_file_path=params[ConstantValues.final_file_path]
         )
 
+        self.__callback_func = params[ConstantValues.callback_func]
+
         self.__variable_types = {}
         self.__feature_configure = None
 
@@ -63,6 +65,12 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
             get_current_memory_gb()["memory_usage"])
         self.final_configure_generation(dataset=dataset)
 
+        message = "Feature generation executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="feature_generation",
+                             success_flag=True,
+                             message=message)
+
     def _increment_run(self, **entity):
         assert ConstantValues.increment_dataset in entity.keys()
         dataset = entity[ConstantValues.increment_dataset]
@@ -76,6 +84,12 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
         if self._enable is True:
             self._ft_generator(dataset=dataset)
 
+        message = "Feature generation executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="feature_generation",
+                             success_flag=True,
+                             message=message)
+
     def _predict_run(self, **entity):
         assert "infer_dataset" in entity.keys()
         dataset = entity['infer_dataset']
@@ -88,6 +102,12 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
 
         if self._enable is True:
             self._ft_generator(dataset=dataset)
+
+        message = "Feature generation executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="feature_generation",
+                             success_flag=True,
+                             message=message)
 
     def _load_feature_configure(self):
         self.__feature_configure = yaml_read(self._source_file_path)
@@ -110,7 +130,7 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
                 assert self.__feature_configure[col]['ftype'] == 'datetime'
                 self.__variable_types[col] = ft.variable_types.Datetime
 
-        logger.info("Featuretools EntitySet object constructs, " + "with current memory usage: %.2f GiB",
+        logger.info("Featuretools EntitySet object constructs, with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
         es = ft.EntitySet(id=self.name).entity_from_dataframe(entity_id=self._name, dataframe=data,
                                                               variable_types=self.__variable_types,
@@ -124,9 +144,9 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
         try:
             trans_primitives.remove("week")
         except ValueError:
-            logger.info("week transform does not exist in trans_primitives.")
+            message = "week transform does not exist in trans_primitives."
+            logger.info(message)
         finally:
-
             # Create new features using specified primitives
             logger.info("DFS method prepares to start, " + "with current memory usage: %.2f GiB",
                         get_current_memory_gb()["memory_usage"])
@@ -195,7 +215,12 @@ class FeatureToolsGenerator(BaseFeatureGenerator):
                     ftype = "numerical"
                     dtype = "float64"
                 else:
-                    raise ValueError("Unknown input feature ftype: " + str(feature.name))
+                    message = "Unknown input feature ftype: " + str(feature.name)
+                    self.__callback_func(type_name="component_configure",
+                                         object_name="feature_generation",
+                                         success_flag=False,
+                                         message=message)
+                    raise ValueError(message)
 
                 item_dict = {"name": feature.name, "index": index, "dtype": dtype, "ftype": ftype, "used": True}
                 assert feature.name not in self.__yaml_dict.keys()

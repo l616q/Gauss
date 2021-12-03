@@ -22,7 +22,6 @@ class PreprocessRoute(Component):
     """
     PreprocessRoute object.
     """
-
     def __init__(self, **params):
         """
         :param name: PreprocessRoute name.
@@ -74,6 +73,7 @@ class PreprocessRoute(Component):
 
         self._data_file_type = params[ConstantValues.data_file_type]
         self._dataset_name = params[ConstantValues.dataset_name]
+        self.__report_configure = params[ConstantValues.report_configure]
 
         if self._task_name == ConstantValues.regression:
             label_encoder_params = Bunch(
@@ -85,7 +85,8 @@ class PreprocessRoute(Component):
                 source_file_path=params[ConstantValues.feature_path_dict][ConstantValues.data_clear_feature_path],
                 final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.label_encoder_feature_path],
                 label_encoding_configure_path=params[ConstantValues.feature_path_dict][
-                    ConstantValues.label_encoding_models_path]
+                    ConstantValues.label_encoding_models_path],
+                callback_func=self.__callback_func
             )
         else:
             label_encoder_params = Bunch(
@@ -96,7 +97,8 @@ class PreprocessRoute(Component):
                 source_file_path=params[ConstantValues.feature_path_dict][ConstantValues.data_clear_feature_path],
                 final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.label_encoder_feature_path],
                 label_encoding_configure_path=params[ConstantValues.feature_path_dict][
-                    ConstantValues.label_encoding_models_path]
+                    ConstantValues.label_encoding_models_path],
+                callback_func=self.__callback_func
             )
         if self._train_flag == ConstantValues.train:
             self._target_names = params[ConstantValues.target_names]
@@ -129,7 +131,8 @@ class PreprocessRoute(Component):
                 task_name=params[ConstantValues.task_name],
                 train_flag=self._train_flag,
                 source_file_path=params[ConstantValues.feature_path_dict][ConstantValues.user_feature_path],
-                final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.type_inference_feature_path]
+                final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.type_inference_feature_path],
+                callback_func=self.__callback_func
             )
         )
 
@@ -145,7 +148,8 @@ class PreprocessRoute(Component):
                     ConstantValues.type_inference_feature_path],
                 data_clear_configure_path=params[ConstantValues.feature_path_dict][ConstantValues.impute_models_path],
                 final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.data_clear_feature_path],
-                strategy_dict=None
+                strategy_dict=None,
+                callback_func=self.__callback_func
             )
         )
 
@@ -164,7 +168,8 @@ class PreprocessRoute(Component):
                 enable=params[ConstantValues.feature_generator_flag],
                 task_name=params[ConstantValues.task_name],
                 source_file_path=params[ConstantValues.feature_path_dict][ConstantValues.label_encoder_feature_path],
-                final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.feature_generator_feature_path]
+                final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.feature_generator_feature_path],
+                callback_func=self.__callback_func
             )
         )
 
@@ -178,11 +183,10 @@ class PreprocessRoute(Component):
                 task_name=params[ConstantValues.task_name],
                 source_file_path=params[ConstantValues.feature_path_dict][
                     ConstantValues.feature_generator_feature_path],
-                final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.unsupervised_feature_path]
+                final_file_path=params[ConstantValues.feature_path_dict][ConstantValues.unsupervised_feature_path],
+                callback_func=self.__callback_func
             )
         )
-
-        self.__report_configure = params[ConstantValues.report_configure]
 
     @classmethod
     def create_component(cls, component_name: str, **params):
@@ -291,7 +295,8 @@ class PreprocessRoute(Component):
             data_file_type=self._data_file_type,
             column_name_flag=self._increment_column_name_flag,
             target_names=self._target_names,
-            memory_only=True
+            memory_only=True,
+            callback_func=self.__callback_func
         )
         logger.info("Starting loading data.")
         increment_dataset = self.create_entity(
@@ -341,7 +346,8 @@ class PreprocessRoute(Component):
             data_path=self._inference_data_path,
             data_file_type=self._data_file_type,
             column_name_flag=self._inference_column_name_flag,
-            memory_only=True
+            memory_only=True,
+            callback_func=self.__callback_func
         )
         infer_dataset = self.create_entity(
             entity_name=self._dataset_name,

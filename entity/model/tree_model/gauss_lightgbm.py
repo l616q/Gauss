@@ -69,6 +69,8 @@ class GaussLightgbm(ModelWrapper):
                 train_flag=params[ConstantValues.train_flag]
             )
 
+        self.__callback_func = params[ConstantValues.callback_func]
+
         self._model_file_name = self._name + ".txt"
         self._model_config_file_name = self._name + ".yaml"
         self._feature_config_file_name = self._name + ".yaml"
@@ -77,6 +79,12 @@ class GaussLightgbm(ModelWrapper):
         self._eval_function = None
 
         self.count = 0
+
+        message = "Creating lightgbm model successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="model",
+                             success_flag=True,
+                             message=message)
 
     def __repr__(self):
         pass
@@ -664,6 +672,12 @@ class GaussLightgbm(ModelWrapper):
                        self._feature_config_file_name
                    )
                    )
+
+        message = "Save lightgbm model successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="model",
+                             success_flag=True,
+                             message=message)
 
     def _update_best(self):
         """

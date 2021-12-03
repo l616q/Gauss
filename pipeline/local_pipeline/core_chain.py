@@ -33,6 +33,8 @@ class CoreRoute(Component):
                                                     ConstantValues.multiclass_classification,
                                                     ConstantValues.regression]
 
+        self.__report_configure = params[ConstantValues.report_configure]
+
         # name of model, which will be used to create entity
         self.__model_name = params[ConstantValues.model_name]
         self.__feature_selector_flag = params[ConstantValues.supervised_feature_selector_flag]
@@ -52,7 +54,8 @@ class CoreRoute(Component):
             name=self.__model_name,
             model_root_path=params[ConstantValues.model_root_path],
             train_flag=self._train_flag,
-            task_name=self._task_name
+            task_name=self._task_name,
+            callback_func=self.__callback_func
         )
 
         if self._train_flag == ConstantValues.train:
@@ -67,7 +70,8 @@ class CoreRoute(Component):
             self.__loss_name = params[ConstantValues.loss_name]
             if self.__loss_name is not None:
                 loss_params = Bunch(
-                    name=self.__loss_name
+                    name=self.__loss_name,
+                    callback_func=self.__callback_func
                 )
                 self.__loss = self.__create_entity(
                     entity_name=self.__loss_name,
@@ -78,7 +82,8 @@ class CoreRoute(Component):
 
             self.__metric_name = params[ConstantValues.metric_name]
             # create metric and set optimize_mode
-            metric_params = Bunch(name=self.__metric_name)
+            metric_params = Bunch(name=self.__metric_name,
+                                  callback_func=self.__callback_func)
             self.__metric = self.__create_entity(
                 entity_name=self.__metric_name,
                 **metric_params
@@ -95,7 +100,8 @@ class CoreRoute(Component):
                 optimize_mode=self.__optimize_mode,
                 auto_ml_path=self.__auto_ml_path,
                 source_file_path=None,
-                final_file_path=None
+                final_file_path=None,
+                callback_func=self.__callback_func
             )
 
             self.__auto_ml = self.__create_component(
@@ -117,7 +123,8 @@ class CoreRoute(Component):
                         final_file_path=params["target_feature_configure_path"],
                         feature_selector_model_names=params["feature_selector_model_names"],
                         selector_trial_num=params["selector_trial_num"],
-                        selector_configure_path=self.__selector_configure_path
+                        selector_configure_path=self.__selector_configure_path,
+                        callback_func=self.__callback_func
                     )
 
                     self.__feature_selector = self.__create_component(
@@ -135,7 +142,8 @@ class CoreRoute(Component):
                         final_file_path=params["target_feature_configure_path"],
                         feature_selector_model_names=params["feature_selector_model_names"],
                         improved_selector_configure_path=params["improved_selector_configure_path"],
-                        selector_trial_num=params["selector_trial_num"]
+                        selector_trial_num=params["selector_trial_num"],
+                        callback_func=self.__callback_func
                     )
 
                     self.__feature_selector = self.__create_component(
@@ -150,7 +158,8 @@ class CoreRoute(Component):
                         init_model_root=None,
                         train_flag=self._train_flag,
                         task_name=self._task_name,
-                        metric_eval_used_flag=params["metric_eval_used_flag"]
+                        metric_eval_used_flag=params["metric_eval_used_flag"],
+                        callback_func=self.__callback_func
                     )
 
                     model_params.init_model_root = params["init_model_root"]
@@ -172,7 +181,8 @@ class CoreRoute(Component):
                         optimize_mode=self.__optimize_mode,
                         auto_ml_path=self.__auto_ml_path,
                         source_file_path=None,
-                        final_file_path=None
+                        final_file_path=None,
+                        callback_func=self.__callback_func
                     )
 
                     self.__selector_auto_ml = self.__create_component(
@@ -369,3 +379,16 @@ class CoreRoute(Component):
         gauss_factory = GaussFactoryProducer()
         entity_factory = gauss_factory.get_factory(choice="entity")
         return entity_factory.get_entity(entity_name=entity_name, **params)
+
+    def __callback_func(self,
+                        type_name: str,
+                        object_name: str,
+                        success_flag: bool,
+                        message: str):
+
+        self.__report_configure[type_name][object_name]["success_flag"] = success_flag
+        self.__report_configure[type_name][object_name]["message"] = message
+
+    @property
+    def report_configure(self):
+        return self.__report_configure

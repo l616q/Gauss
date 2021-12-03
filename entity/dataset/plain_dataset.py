@@ -22,7 +22,6 @@ from entity.dataset.base_dataset import BaseDataset
 from utils.bunch import Bunch
 from utils.constant_values import ConstantValues
 from utils.reduce_data import reduce_data
-from utils.exception import GeneralEntityException
 
 
 class PlaintextDataset(BaseDataset):
@@ -86,7 +85,7 @@ class PlaintextDataset(BaseDataset):
                                  object_name="dataset",
                                  success_flag=False,
                                  message=message)
-            raise GeneralEntityException(message)
+            raise ValueError(message)
 
         self._default_print_size = 5
         self._bunch = None
@@ -315,13 +314,13 @@ class PlaintextDataset(BaseDataset):
         if self._name == ConstantValues.train_dataset or self._name == ConstantValues.val_dataset:
             self.__set_proportion()
             self.__set_weight()
-            # if self._bunch.get(ConstantValues.dataset_weight) is not None:
-            #     self._bunch.data, self._bunch.target, self._bunch.dataset_weight = shuffle(
-            #         self._bunch.data,
-            #         self._bunch.target,
-            #         self._bunch.dataset_weight)
-            # else:
-            #     self._bunch.data, self._bunch.target = shuffle(self._bunch.data, self._bunch.target)
+            if self._bunch.get(ConstantValues.dataset_weight) is not None:
+                self._bunch.data, self._bunch.target, self._bunch.dataset_weight = shuffle(
+                    self._bunch.data,
+                    self._bunch.target,
+                    self._bunch.dataset_weight)
+            else:
+                self._bunch.data, self._bunch.target = shuffle(self._bunch.data, self._bunch.target)
         elif self._name == ConstantValues.increment_dataset:
             self.__set_proportion()
             self._bunch.data, self._bunch.target = shuffle(self._bunch.data, self._bunch.target)
@@ -665,6 +664,7 @@ class PlaintextDataset(BaseDataset):
                 data.append(data_index)
 
             data = pd.DataFrame(np.asarray(data, dtype=str))
+            data.replace(to_replace="", value=None, inplace=True)
             self.__column_index = list(data.columns)
 
             if self.__use_weight_flag:

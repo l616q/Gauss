@@ -69,6 +69,8 @@ class GaussXgboost(ModelWrapper):
                 train_flag=params[ConstantValues.train_flag]
             )
 
+        self.__callback_func = params[ConstantValues.callback_func]
+
         self._model_file_name = self._name + ".txt"
         self._model_config_file_name = self._name + ".yaml"
         self._feature_config_file_name = self._name + ".yaml"
@@ -77,6 +79,12 @@ class GaussXgboost(ModelWrapper):
         self._eval_function = None
 
         self.count = 0
+
+        message = "Creating xgboost model successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="model",
+                             success_flag=True,
+                             message=message)
 
     def __repr__(self):
         pass
@@ -689,6 +697,12 @@ class GaussXgboost(ModelWrapper):
                        self._feature_config_file_name
                    )
                    )
+
+        message = "Save xgboost model successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="model",
+                             success_flag=True,
+                             message=message)
 
     def _update_best(self):
         """
