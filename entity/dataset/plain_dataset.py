@@ -176,6 +176,7 @@ class PlaintextDataset(BaseDataset):
         train_weight_column_names = train_dataset.weight_column_names
         train_weight_index = train_dataset.weight_index
         train_column_name_flag = train_dataset.column_name_flag
+
         if not isinstance(train_column_name_flag, bool):
             message = "Value: train column name flag should be type of bool, " \
                       "but get {} instead.".format(train_column_name_flag)
@@ -434,8 +435,19 @@ class PlaintextDataset(BaseDataset):
                 self._bunch.dataset_weight = pd.DataFrame(dataset_weight)
 
     def load_csv(self):
-        data = reduce_data(data_path=self._data_path,
-                           column_name_flag=self._column_name_flag)
+        if not isinstance(self._column_name_flag, bool):
+            message = "Column name flag should be type of bool."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
+
+        if self._column_name_flag:
+            data = pd.read_csv(self._data_path, parse_dates=True, keep_date_col=True, header=0)
+        else:
+            data = pd.read_csv(self._data_path, parse_dates=True, keep_date_col=True, header=None)
+
         if self._name == ConstantValues.train_dataset:
             if bool(self._weight_column_names) and bool(self.__dataset_weight_dict):
                 message = "Just one weight setting can be set."
@@ -638,6 +650,7 @@ class PlaintextDataset(BaseDataset):
 
             feature_names = ["feature_" + str(index) for index, _ in enumerate(data)]
             data.columns = feature_names
+        reduce_data(dataframe=data)
         return data, target, feature_names, target_names, weight
 
     def load_txt(self):
@@ -730,6 +743,7 @@ class PlaintextDataset(BaseDataset):
 
             feature_names = ["feature_" + str(index) for index, _ in enumerate(data)]
             data.columns = feature_names
+        reduce_data(dataframe=data)
         return data, target, feature_names, target_names, weight
 
     def wc_count(self):

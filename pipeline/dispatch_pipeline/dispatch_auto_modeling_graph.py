@@ -15,7 +15,6 @@ from utils.bunch import Bunch
 from utils.check_dataset import check_data
 from utils.yaml_exec import yaml_write
 from utils.exception import PipeLineLogicError, NoResultReturnException
-from utils.Logger import logger
 from utils.constant_values import ConstantValues
 
 
@@ -135,8 +134,11 @@ class AutoModelingGraph(BaseModelingGraph):
                  self._component_names[ConstantValues.type_inference_name],
              ConstantValues.model_zoo: self._model_zoo
              }
+        self.__report_configure = None
 
     def _run_route(self, **params):
+        self.__init_report_configure()
+
         data_clear_flag = params[ConstantValues.data_clear_flag]
         if not isinstance(data_clear_flag, bool):
             raise TypeError(
@@ -232,7 +234,11 @@ class AutoModelingGraph(BaseModelingGraph):
 
              ConstantValues.label_encoder_feature_path: join(
                  work_feature_root,
-                 feature_dict.label_encoder_feature)
+                 feature_dict.label_encoder_feature),
+
+             ConstantValues.success_file_path: join(
+                 dispatch_model_root,
+                 feature_dict.success_file_name)
              }
 
         work_model_root = join(
@@ -272,14 +278,36 @@ class AutoModelingGraph(BaseModelingGraph):
             feature_generator_flag=feature_generator_flag,
             unsupervised_feature_selector_name=self._component_names[
                 ConstantValues.unsupervised_feature_selector_name],
-            unsupervised_feature_selector_flag=unsupervised_feature_selector_flag
+            unsupervised_feature_selector_flag=unsupervised_feature_selector_flag,
+            report_configure=self.__report_configure
         )
 
         try:
             entity_dict = preprocess_chain.run()
-        except PipeLineLogicError as error:
-            logger.info(error)
-            return None
+        except PipeLineLogicError:
+            self.__report_configure.main_pipeline.info = "Error: pipeline logic error happens in preprocessing chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            return self.__report_configure
+        except (ValueError,
+                TypeError,
+                RuntimeError,
+                IndexError,
+                IOError,
+                BaseException):
+            report_configure = preprocess_chain.report_configure
+            self.__report_configure.update(report_configure)
+            self.__report_configure.main_pipeline.info = "General error happens in preprocessing chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            return self.__report_configure
+
+        report_configure = preprocess_chain.report_configure
+
+        if not isinstance(entity_dict, dict):
+            self.__report_configure.main_pipeline.info = "Get illegal type of entity dict in preprocessing chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            self.__report_configure.update(report_configure)
+            return self.__report_configure
+        self.__report_configure.update(report_configure)
 
         self._already_data_clear = preprocess_chain.already_data_clear
 
@@ -287,7 +315,10 @@ class AutoModelingGraph(BaseModelingGraph):
         # 如果未进行数据清洗, 并且模型需要数据清洗, 则返回None.
         if check_data(already_data_clear=self._already_data_clear,
                       model_need_clear_flag=self._model_need_clear_flag.get(model_name)) is not True:
-            return None
+            self.__report_configure.main_pipeline.info = "Get illegal type of entity dict in auto modeling chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            self.__report_configure.update(report_configure)
+            return self.__report_configure
 
         assert ConstantValues.train_dataset in entity_dict and ConstantValues.val_dataset in entity_dict
 
@@ -321,10 +352,36 @@ class AutoModelingGraph(BaseModelingGraph):
             selector_configure_path=self._work_paths[ConstantValues.selector_configure_path]
         )
 
-        core_chain.run(**entity_dict)
+        try:
+            core_chain.run(**entity_dict)
+            report_configure = preprocess_chain.report_configure
+        except PipeLineLogicError:
+            self.__report_configure.main_pipeline.info = "Error: pipeline logic error happens in core chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            self.__report_configure.update(report_configure)
+            return self.__report_configure
+        except (ValueError,
+                TypeError,
+                RuntimeError,
+                IndexError,
+                IOError,
+                BaseException):
+            self.__report_configure.update(report_configure)
+            self.__report_configure.main_pipeline.info = "General error happens in preprocessing chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            return self.__report_configure
+
         local_metric = core_chain.optimal_metric
 
         assert local_metric is not None
+
+        self.__report_configure.main_pipeline.success_flag = True
+        self.__report_configure.main_pipeline.info = "Generate model successfully."
+
+        report_configure = self.__replace_type(report_configure=self.__report_configure)
+        yaml_write(yaml_dict=report_configure,
+                   yaml_file=feature_dict[ConstantValues.success_file_path])
+
         return {"work_model_root": work_model_root,
                 "model_name": params.get(ConstantValues.model_name),
                 "increment_flag": False,
@@ -344,8 +401,9 @@ class AutoModelingGraph(BaseModelingGraph):
             opt_model_names=self._global_values[ConstantValues.opt_model_names],
             model_name=self._model_zoo[0])
 
-        if local_result is not None:
+        if self.__report_configure.main_pipeline.success_flag is True:
             train_results.append(local_result)
+
         self._find_best_result(train_results=train_results)
 
     def _find_best_result(self, train_results):
@@ -383,7 +441,11 @@ class AutoModelingGraph(BaseModelingGraph):
 
         yaml_write(yaml_dict=yaml_dict,
                    yaml_file=join(self._work_paths["work_root"], feature_dict.pipeline_configure))
-        yaml_write(yaml_dict={},
+
+        self.__report_configure.success_flag = True
+        report_configure = self.__replace_type(report_configure=self.__report_configure)
+
+        yaml_write(yaml_dict=report_configure,
                    yaml_file=join(self._work_paths["work_root"], feature_dict.success_file_name))
 
     @property

@@ -60,6 +60,7 @@ class UpdateBestApplication:
                 pipeline_configure = self.__load_pipeline_configure(generated_id)
                 model_name = list(pipeline_configure[ConstantValues.model].keys())[0]
                 model_dict = pipeline_configure[ConstantValues.model][model_name]
+
                 if model_name in self.__model_zoo:
                     metric_result = metric.reconstruct(metric_value=model_dict[ConstantValues.metric_result])
                     if self.__evaluate_result.get(model_name) is None:
@@ -88,13 +89,15 @@ class UpdateBestApplication:
             self.__reconstruct_folder(folder=os.path.join(self.__main_work_root, model_name),
                                       init_prefix=generated_id)
 
-        # for generated_id in self.__generated_ids:
-        #     self.__delete_generated_folder(generated_id)
+        for generated_id in self.__generated_ids:
+            self.__delete_generated_folder(generated_id)
 
     def __load_success_flag(self, generated_id):
         temp_root = os.path.join(self.__work_space, generated_id)
         file_path = os.path.join(temp_root, self.__success_file_name)
-        return os.path.exists(file_path)
+
+        report_configure = yaml_read(file_path)
+        return report_configure.success_flag
 
     def __load_dispatch_configure(self):
         """

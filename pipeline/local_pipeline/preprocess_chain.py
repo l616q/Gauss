@@ -13,6 +13,7 @@ from utils.bunch import Bunch
 from utils.exception import PipeLineLogicError
 from utils.Logger import logger
 from utils.constant_values import ConstantValues
+from utils.reduce_data import reduce_data
 
 from gauss.component import Component
 from gauss_factory.gauss_factory_producer import GaussFactoryProducer
@@ -252,9 +253,11 @@ class PreprocessRoute(Component):
             train_dataset.union(val_dataset)
 
         entity_dict[ConstantValues.train_dataset] = train_dataset
+
         # 类型推导
         logger.info("Starting type inference.")
         self.type_inference.run(**entity_dict)
+
         # 数据清洗
         logger.info("Starting data clear.")
         self.data_clear.run(**entity_dict)
@@ -267,15 +270,22 @@ class PreprocessRoute(Component):
 
         logger.info("Starting encoding features and labels.")
         self.label_encoder.run(**entity_dict)
+
         logger.info("Starting feature generation.")
         # 特征生成
         self.feature_generator.run(**entity_dict)
+
         logger.info("Starting unsupervised feature selector.")
         # 无监督特征选择
         self.unsupervised_feature_selector.run(**entity_dict)
+
         # 数据拆分
         val_dataset = train_dataset.split()
         entity_dict[ConstantValues.val_dataset] = val_dataset
+
+        reduce_data(dataframe=train_dataset.get_dataset().data)
+        reduce_data(dataframe=val_dataset.get_dataset().data)
+
         logger.info("Dataset preprocessing has finished.")
         return entity_dict
 

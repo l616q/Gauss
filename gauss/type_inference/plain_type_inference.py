@@ -74,7 +74,8 @@ class PlainTypeInference(BaseTypeInference):
             self.init_feature_configure = None
 
         self.final_feature_configure = FeatureConf(name='target feature path',
-                                                   file_path=params["final_file_path"])
+                                                   file_path=params["final_file_path"],
+                                                   callback_func=params[ConstantValues.callback_func])
 
     def _train_run(self, **entity):
         assert ConstantValues.train_dataset in entity.keys()
