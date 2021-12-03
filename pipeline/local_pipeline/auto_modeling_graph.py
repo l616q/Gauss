@@ -396,6 +396,19 @@ class AutoModelingGraph(BaseModelingGraph):
                     feature_dict[ConstantValues.final_feature_configure],
                 "dispatch_id": folder_name}
 
+    def run(self):
+        """
+        Start training model with pipeline.
+        :return:
+        """
+        try:
+            self._run()
+            self.__report_configure.success_flag = True
+        except NoResultReturnException:
+            self.__report_configure.success_flag = False
+
+        self._set_pipeline_config()
+
     def _run(self):
         train_results = []
         routes = self.__generate_route()
@@ -415,14 +428,14 @@ class AutoModelingGraph(BaseModelingGraph):
             if self.__report_configure.main_pipeline.success_flag is True:
                 train_results.append(local_result)
 
+        if len(train_results) == 0:
+            raise NoResultReturnException("No model is trained successfully.")
+
         self._find_best_result(train_results=train_results)
 
     def _find_best_result(self, train_results):
         best_result = {}
         best_id = []
-
-        if len(train_results) == 0:
-            raise NoResultReturnException("No model is trained successfully.")
 
         for result in train_results:
             model_name = result.get(ConstantValues.model_name)
@@ -472,8 +485,8 @@ class AutoModelingGraph(BaseModelingGraph):
                    yaml_file=join(self._work_paths["work_root"], feature_dict.pipeline_configure))
 
         self.__report_configure.success_flag = True
-
         report_configure = self.__replace_type(report_configure=self.__report_configure)
+
         yaml_write(yaml_dict=report_configure,
                    yaml_file=join(self._work_paths["work_root"], feature_dict.success_file_name))
 

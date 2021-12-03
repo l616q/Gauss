@@ -43,7 +43,8 @@ class CoreRoute(Component):
 
         # create feature configure
         feature_conf_params = Bunch(name=params[ConstantValues.feature_configure_name],
-                                    file_path=None)
+                                    file_path=None,
+                                    callback_func=self.__callback_func)
         self.__feature_conf = self.__create_entity(
             entity_name=params[ConstantValues.feature_configure_name],
             **feature_conf_params

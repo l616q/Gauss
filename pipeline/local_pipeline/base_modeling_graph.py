@@ -13,6 +13,7 @@ from gauss_factory.gauss_factory_producer import GaussFactoryProducer
 
 from utils.bunch import Bunch
 from utils.constant_values import ConstantValues
+from utils.exception import NoResultReturnException
 
 
 class BaseModelingGraph:
