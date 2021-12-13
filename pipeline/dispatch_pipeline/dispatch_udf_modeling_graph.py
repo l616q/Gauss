@@ -362,6 +362,8 @@ class UdfModelingGraph(BaseModelingGraph):
                     if best_result.get(model_name).get(ConstantValues.metric_result).__cmp__(
                             result.get(ConstantValues.metric_result)) < 0:
                         best_result[model_name] = result
+
+
         # this code will change metric result object to metric value.
         for result in train_results:
             result[ConstantValues.optimize_mode] = result.get(ConstantValues.metric_result).optimize_mode

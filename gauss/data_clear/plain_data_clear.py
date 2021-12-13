@@ -25,10 +25,7 @@ from utils.constant_values import ConstantValues
 class PlainDataClear(BaseDataClear):
     def __init__(self, **params):
         """Construct a PlainDataClear.
-
-        :param name: The name of the Component.
-        :param strategy_dict: strategy for missing value. You can use 'mean', 'median', 'most_frequent' and 'constant',
-        and if 'constant' is used, an efficient fill_value must be given.you can use two strategy_dict formats, for example:
+        and if 'constant' is used, an efficient fill_value must be given. you can use two strategy_dict formats, for example:
         1 > {"model": {"name": "ftype"}, "category": {"name": 'most_frequent'}, "numerical": {"name": "mean"}, "bool": {"name": "most_frequent"}, "datetime": {"name": "most_frequent"}}
         2 > {"model": {"name": "feature"}, "feature 1": {"name": 'most_frequent'}, "feature 2": {"name": 'constant', "fill_value": 0}}
         But you can just use one of them, PlainDataClear object will use strict coding check programming.
@@ -84,7 +81,9 @@ class PlainDataClear(BaseDataClear):
         data = dataset.get_dataset().data
         for item in feature_conf.keys():
             item_configure = Bunch(**feature_conf[item])
-            if "category" in item_configure["ftype"] or "datetime" in item_configure["ftype"]:
+            if "category" in item_configure["ftype"] or \
+                    "object" in item_configure["ftype"] or \
+                    "datetime" in item_configure["ftype"]:
                 data[item_configure.name] = data[item_configure["name"]].astype("category")
             else:
                 if "int" in item_configure["dtype"]:
@@ -115,6 +114,7 @@ class PlainDataClear(BaseDataClear):
             with shelve.open(self._data_clear_configure_path) as shelve_open:
                 dc_model_list = shelve_open['impute_models']
 
+            assert isinstance(dc_model_list, dict)
             for col in feature_names:
                 item_conf = feature_conf[col]
                 if dc_model_list.get(col):
@@ -152,6 +152,7 @@ class PlainDataClear(BaseDataClear):
             with shelve.open(self._data_clear_configure_path) as shelve_open:
                 dc_model_list = shelve_open['impute_models']
 
+            assert isinstance(dc_model_list, dict)
             for col in feature_names:
                 item_conf = feature_conf[col]
                 if dc_model_list.get(col):
@@ -294,10 +295,11 @@ class PlainDataClear(BaseDataClear):
     @classmethod
     def _type_check(cls, item, dtype):
         """
-        this method is used to infer if a type of an object is int, float or string based on TypeInference object.
-        :param item:
-        :param dtype: dtype of a feature in feature configure file.
+        this method is used to infer if a type of object is int, float or string based on TypeInference object.
+        param dtype: dtype of a feature in feature configure file.
         :return: bool
+        :param item:
+        :return:
         """
         assert dtype in ["int64", "float64", "string"]
 

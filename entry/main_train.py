@@ -38,8 +38,8 @@ pipeline_dict.work_root = environ_configure.work_root
 # optional: ["binary_classification", "multiclass_classification", "regression"]
 pipeline_dict.task_name = "binary_classification"
 # optional: ["auc", "binary_f1", "multiclass_f1", "mse"]
-# This value will decided the way auto ml component chooses the best model.
-pipeline_dict.metric_name = "binary_f1"
+# This value will decide the way auto ml component chooses the best model.
+pipeline_dict.metric_name = "auc"
 # optional: ["mse", "binary_logloss", "None"]
 # This value will customize the loss function of model, and it can be set None.
 # if None, default loss will be chosen.

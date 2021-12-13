@@ -392,7 +392,7 @@ class UdfModelingGraph(BaseModelingGraph):
                 best_model_result = result
             else:
                 if result.get(ConstantValues.metric_result) is not None:
-                    if best_result.get(model_name).get(ConstantValues.metric_result).__cmp__(
+                    if best_model_result.get(ConstantValues.metric_result).__cmp__(
                             result.get(ConstantValues.metric_result)) < 0:
                         best_model_result = result
 

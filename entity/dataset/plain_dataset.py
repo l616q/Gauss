@@ -38,14 +38,14 @@ class PlaintextDataset(BaseDataset):
         """
         Two kinds of raw data supported:
             1. The first is read file whose format is an option in `.csv`, `.txt`,and
-        `.libsvm`, data after processing will wrapped into a `Bunch` object which contains
+        `.libsvm`, data after processing will wrapper into a `Bunch` object which contains
         `data` and `target`, meanwhile `feature_names` and `target_name` also can be a
-        content when exist.
+        content when existed.
             2. Pass a `data_package` wrapped by Bunch to the construct function, `data` and
-        `target` must provided at least.
+        `target` must be provided at least.
         ======
         :param name: A string to represent module's name.
-        :param data_path:  A string or `dict`; if string, it can be directly used by load data
+        :param data_path:  A string or `dict`; if strung, it can be directly used by load data
             function, otherwise `train_dataset` and `val_dataset` must be the key of the dict.
         :param data_package: default is None, must be filled if data_path not applied.
         :param task_type: A string which is an option between `classification` or `regression`.
@@ -395,7 +395,7 @@ class PlaintextDataset(BaseDataset):
 
     def __dict_set_weight(self):
         """
-        # eg. {"target_A": {1: 1.9, -1: 1}}, {-1: {1: 1.9, -1: 1}},
+        # e.g. {"target_A": {1: 1.9, -1: 1}}, {-1: {1: 1.9, -1: 1}},
         if label weight dict has been set, this weight will be used, otherwise weight will be set 1.
         Note: column name has been replaced, so key of dataset weight dict need updated.
         :return: None10 Minutes to cuDF and Dask-cuDF
@@ -774,7 +774,7 @@ class PlaintextDataset(BaseDataset):
     # dataset is a PlainDataset object
     def union(self, val_dataset: PlaintextDataset):
         """ This method is used for concatenating train dataset and validation dataset.Merge train set and
-        validation set in vertical, this procedure will operated on train set.
+        validation set in vertical, this procedure will operate on train set.
         example:
             trainSet = PlaintextDataset(...)
             validationSet = trainSet.split()
