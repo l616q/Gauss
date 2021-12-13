@@ -199,6 +199,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
                 return int(columns * col_ratio)
 
             parameters["topk"] = len_features(parameters["topk"])
+            print(parameters["topk"])
 
             feature_list = [item[0] for item in feature_importance_pair[:parameters["topk"]]]
             logger.info(

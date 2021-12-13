@@ -31,7 +31,7 @@ class TabularAutoML(BaseAutoML):
         :param train_flag: string object.
         :param enable: bool object.
         :param opt_model_names: opt_model is a list object,
-        and can includes tpe, random_search, anneal and evolution.
+        and can include tpe, random_search, anneal and evolution.
         """
         super().__init__(
             name=params[ConstantValues.name],
@@ -228,7 +228,7 @@ class TabularAutoML(BaseAutoML):
     @property
     def local_best(self):
         """
-        Get best metric result of single trial in auto machine learning.
+        Get the best metric result of single trial in auto machine learning.
         :return: MetricResult
         """
         return self.__local_best

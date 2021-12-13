@@ -166,7 +166,8 @@ class CoreRoute(Component):
                     model_params.init_model_root = params["init_model_root"]
                     self.__selector_model = self.__create_entity(entity_name="lightgbm", **selector_model_params)
 
-                    selector_metric_params = Bunch(name=self.__metric_name)
+                    selector_metric_params = Bunch(name=self.__metric_name,
+                                                   callback_func=self.__callback_func)
                     self.__selector_metric = self.__create_entity(
                         entity_name=self.__metric_name,
                         **selector_metric_params

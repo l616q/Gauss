@@ -233,7 +233,7 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
                 )
 
                 receive_params = selector_tuner.generate_parameters(trial)
-                # feature selector hyper-parameters
+                # feature selector hyperparameters
                 parameters.update(receive_params)
 
                 if model_name == "GBDTSelector":
@@ -481,7 +481,7 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
         """
         check dataset and remove irregular columns,
         if there is existing at least a features containing
-        np.nan, np.inf or -np.inf, this method will return False.
+        np. Nan, np.inf or -np.inf, this method will return False.
         :param dataframe
         :return: bool
         """

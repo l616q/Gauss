@@ -23,9 +23,9 @@ from utils.base import get_current_memory_gb
 class UnsupervisedFeatureSelector(BaseFeatureSelector):
     def __init__(self, **params):
         """
-        :param name: component name
+        param name: component name
         :param train_flag: string object.
-        :param enable: bool object.
+        param enable: bool object.
         """
         super().__init__(
             name=params[ConstantValues.name],

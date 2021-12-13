@@ -236,7 +236,7 @@ class GaussLightgbm(ModelWrapper):
         """
         This method is used to train lightgbm
         model in binary classification.
-        :param train_dataset:
+        param train_dataset:
         :param val_dataset:
         :param entity:
         :return: None
@@ -254,7 +254,7 @@ class GaussLightgbm(ModelWrapper):
             "Value: target_names is different between train_dataset and validation dataset."
 
         # One label learning is achieved now, multi_label
-        # learning will be supported in future.
+        # learning will be supported in the future.
         self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
 
         train_label_set = pd.unique(train_dataset.get_dataset().target[self._target_names])
@@ -301,7 +301,7 @@ class GaussLightgbm(ModelWrapper):
             "Value: target_names is different between train_dataset and validation dataset."
 
         # One label learning is achieved now, multi_label
-        # learning will be supported in future.
+        # learning will be supported in the future.
         self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
 
         train_label_set = pd.unique(train_dataset.get_dataset().target[self._target_names])
