@@ -1,0 +1,11 @@
+Metadata-Version: 1.2
+Name: gauss
+Version: 0.0.1
+Summary: gauss is a multifunctional model platform.
+Home-page: UNKNOWN
+Author: citic ai lab
+License: MIT
+Description: UNKNOWN
+Keywords: computing engine,model platform.
+Platform: UNKNOWN
+Requires-Python: >=3.6
