@@ -1,0 +1,29 @@
+component_configure:
+  data_clear:
+    message: Plain data clear executes successfully.
+    success_flag: true
+  feature_generation:
+    message: Feature generation executes successfully.
+    success_flag: true
+  label_encode:
+    message: Plain label encode executes successfully.
+    success_flag: true
+  supervised_feature_selector: {}
+  type_inference:
+    message: Plain type inference executes successfully.
+    success_flag: true
+  unsupervised_feature_selector:
+    message: Unsupervised feature selector executes successfully.
+    success_flag: true
+entity_configure:
+  dataset: {}
+  feature_conf:
+    message: Creat feature conf object successfully.
+    success_flag: true
+  loss: {}
+  metric: {}
+  model: {}
+main_pipeline:
+  info: General error happens in preprocessing chain.
+  success_flag: false
+success_flag: true

@@ -1,0 +1,84 @@
+age:
+  dtype: int64
+  ftype: numerical
+  index: 0
+  name: age
+  size: 1
+  used: True
+job:
+  dtype: string
+  ftype: category
+  index: 1
+  name: job
+  size: 1
+  used: True
+marital:
+  dtype: string
+  ftype: category
+  index: 2
+  name: marital
+  size: 1
+  used: True
+education:
+  dtype: string
+  ftype: category
+  index: 3
+  name: education
+  size: 1
+  used: True
+balance:
+  dtype: int64
+  ftype: numerical
+  index: 4
+  name: balance
+  size: 1
+  used: True
+housing:
+  dtype: string
+  ftype: category
+  index: 5
+  name: housing
+  size: 1
+  used: True
+loan:
+  dtype: string
+  ftype: category
+  index: 6
+  name: loan
+  size: 1
+  used: True
+day:
+  dtype: int64
+  ftype: category
+  index: 7
+  name: day
+  size: 1
+  used: True
+month:
+  dtype: string
+  ftype: category
+  index: 8
+  name: month
+  size: 1
+  used: True
+duration:
+  dtype: int64
+  ftype: numerical
+  index: 9
+  name: duration
+  size: 1
+  used: True
+campaign:
+  dtype: int64
+  ftype: numerical
+  index: 10
+  name: campaign
+  size: 1
+  used: True
+dataset_weight:
+  dtype: string
+  ftype: category
+  index: 12
+  name: dataset_weight
+  size: 1
+  used: False

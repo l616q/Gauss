@@ -1,0 +1,27 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2020, Citic Inc. All rights reserved.
+# Authors: Lab
+"""
+This object is used to produce gauss entity or component factory.
+"""
+from Gauss.gauss_factory.entity_factory import EntityFactory
+from Gauss.gauss_factory.component_factory import ComponentFactory
+
+
+class GaussFactoryProducer:
+    """
+    GaussFactoryProducer object
+    """
+    @staticmethod
+    def get_factory(choice: str):
+        """
+        Produce factory.
+        :param choice:
+        :return:
+        """
+        if choice.lower() == "entity":
+            return EntityFactory()
+        if choice.lower() == "component":
+            return ComponentFactory()
+        return None
