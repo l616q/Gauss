@@ -1,0 +1,26 @@
+data_clear_flag: false
+data_file_type: csv
+dataset_name: plaindataset
+dataset_weight_dict: null
+feature_configure_path: ./bank.yaml
+feature_generator_flag: false
+init_model_root: null
+label_switch_type: null
+loss_name: null
+metric_eval_used_flag: false
+metric_name: binary_f1
+mode: udf
+model_zoo:
+- lightgbm
+supervised_feature_selector_flag: false
+supervised_selector_mode: topk_select
+target_names:
+- deposit
+task_name: binary_classification
+train_column_name_flag: true
+train_data_path: /home/liangqian/Gauss-0.0.1/Gauss/demo/bank.csv
+unsupervised_feature_selector_flag: false
+use_weight_flag: true
+val_column_name_flag: true
+val_data_path: /home/liangqian/Gauss-0.0.1/Gauss/demo/bank_val.csv
+weight_column_name: null
