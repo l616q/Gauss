@@ -3,7 +3,7 @@
 
 Copyright (c) 2020, Citic-Lab. All rights reserved.
 Authors: citic-lab
-GBDT model instances, containing xgboost, xgboost and catboost.
+GBDT model instances, containing lightgbm, xgboost and catboost.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -17,9 +17,7 @@ import numpy as np
 import pandas as pd
 from scipy import special
 
-from catboost import Pool
-from catboost import CatBoostClassifier
-from catboost import CatBoostRegressor
+import core.lightgbm as lgb
 
 from entity.model.model import ModelWrapper
 from entity.model.package_dataset import PackageDataset
@@ -35,9 +33,9 @@ from utils.yaml_exec import yaml_write
 from utils.Logger import logger
 
 
-class GaussCatboost(ModelWrapper):
+class GaussLightgbm(ModelWrapper):
     """
-    xgboost object.
+    lightgbm object.
     """
     def __init__(self, **params):
         assert params[ConstantValues.train_flag] in [ConstantValues.train,
@@ -71,7 +69,7 @@ class GaussCatboost(ModelWrapper):
                 train_flag=params[ConstantValues.train_flag]
             )
 
-        self._model_file_name = self._name + ".cbm"
+        self._model_file_name = self._name + ".txt"
         self._model_config_file_name = self._name + ".yaml"
         self._feature_config_file_name = self._name + ".yaml"
 
@@ -86,19 +84,16 @@ class GaussCatboost(ModelWrapper):
     @PackageDataset
     def __load_data(self, **kwargs):
         """
-        :param dataset: pd.Dataframe
-        :return: catboost.Pool
+        :param dataset:
+        :return: lgb.Dataset
         """
         dataset_bunch = kwargs.get("dataset")
         train_flag = kwargs.get("train_flag")
 
+        categorical_list = dataset_bunch.categorical_list
         # dataset is a BaseDataset object, you can use get_dataset() method to get a Bunch object,
         # including data, target, feature_names, target_names, generated_feature_names.
         assert isinstance(dataset_bunch.data, pd.DataFrame)
-        cat_features = []
-        for col_name in dataset_bunch.data.columns:
-            cat_features.append(col_name)
-
         if train_flag == ConstantValues.train or train_flag == ConstantValues.increment:
             data_shape = dataset_bunch.data.shape
             label_shape = dataset_bunch.target.shape
@@ -113,12 +108,13 @@ class GaussCatboost(ModelWrapper):
             if isinstance(weight, pd.DataFrame):
                 weight = weight.values.flatten()
 
-            cat_data = Pool(
+            lgb_data = lgb.Dataset(
                 data=dataset_bunch.data,
                 label=dataset_bunch.target,
+                categorical_feature=categorical_list,
                 weight=weight,
-                cat_features=cat_features,
-                thread_count=-1
+                free_raw_data=False,
+                silent=True
             )
 
             logger.info(
@@ -126,14 +122,8 @@ class GaussCatboost(ModelWrapper):
                     get_current_memory_gb()["memory_usage"]
                 )
             )
-            return cat_data, dataset_bunch
-        else:
-            cat_data = Pool(
-                data=dataset_bunch.data,
-                label=dataset_bunch.target,
-                cat_features=cat_features
-            )
-        return cat_data, dataset_bunch
+            return lgb_data, dataset_bunch
+        return dataset_bunch
 
     def _initialize_model(self):
         pass
@@ -160,15 +150,17 @@ class GaussCatboost(ModelWrapper):
         else:
             obj_function = None
 
+        # generate user-defined metric function object.
         if self._metric_eval_used_flag and entity["metric"] is not None:
             entity["metric"].label_name = self._target_names
             self._eval_function = entity["metric"].evaluate
             eval_function = self._eval_func
         else:
-            params["eval_metric"] = "logloss"
+            params["metric"] = "binary_logloss"
             eval_function = None
 
-        xgb_entity = self.__xgb_preprocessing(
+        # loading dataset
+        lgb_entity = self.__lgb_preprocessing(
             **Bunch(
                 label_name=self._target_names,
                 train_dataset=train_dataset,
@@ -181,13 +173,13 @@ class GaussCatboost(ModelWrapper):
             )
         )
 
-        xgb_train = xgb_entity.xgb_train
-        xgb_eval = xgb_entity.xgb_eval
+        lgb_train = lgb_entity.lgb_train
+        lgb_eval = lgb_entity.lgb_eval
 
         if self._model_params is not None:
 
             self._model_config = {
-                "Name": self._name,
+                "Name": self.name,
                 "Normalization": False,
                 "Standardization": False,
                 "OnehotEncoding": False,
@@ -195,30 +187,31 @@ class GaussCatboost(ModelWrapper):
             }
 
             logger.info(
-                "Start training xgboost model, "
+                "Start training lightgbm model, "
                 "with current memory usage: {:.2f} GiB".format(
                     get_current_memory_gb()["memory_usage"]
                 )
             )
 
             num_boost_round = params.pop("num_boost_round")
-            early_stopping_rounds = params.pop("early_stopping")
-            assert isinstance(xgb_train, xgb.DMatrix)
+            early_stopping_rounds = params.pop("early_stopping_rounds")
+            assert isinstance(lgb_train, lgb.Dataset)
 
-            self._model = xgb.train(
+            self._model = lgb.train(
                 params=params,
-                dtrain=xgb_train,
-                xgb_model=init_model_path,
+                train_set=lgb_train,
+                init_model=init_model_path,
                 num_boost_round=num_boost_round,
-                evals=[(xgb_eval, "eval_set")],
+                valid_sets=lgb_eval,
+                categorical_feature=self._categorical_list,
                 early_stopping_rounds=early_stopping_rounds,
-                obj=obj_function,
+                fobj=obj_function,
                 feval=eval_function,
-                verbose_eval=0,
+                verbose_eval=False,
             )
 
             logger.info(
-                "Training xgboost model finished, "
+                "Training lightgbm model finished, "
                 "with current memory usage: {:.2f} GiB".format(
                     get_current_memory_gb()["memory_usage"]
                 )
@@ -226,13 +219,14 @@ class GaussCatboost(ModelWrapper):
 
         else:
             raise ValueError("Model parameters is None.")
+        self.count += 1
 
     def _binary_train(self,
                       train_dataset: BaseDataset,
                       val_dataset: BaseDataset,
                       **entity):
         """
-        This method is used to train xgboost
+        This method is used to train lightgbm
         model in binary classification.
         :param train_dataset:
         :param val_dataset:
@@ -243,7 +237,7 @@ class GaussCatboost(ModelWrapper):
         assert self._task_name == ConstantValues.binary_classification
 
         params = self._model_params
-        params["objective"] = "binary:logistic"
+        params["objective"] = "binary"
 
         train_target_names = train_dataset.get_dataset().target_names
         eval_target_names = val_dataset.get_dataset().target_names
@@ -267,21 +261,20 @@ class GaussCatboost(ModelWrapper):
             )
 
         logger.info(
-            "Construct xgboost training dataset, "
+            "Construct lightgbm training dataset, "
             "with current memory usage: {:.2f} GiB".format(
                 get_current_memory_gb()["memory_usage"]
             )
         )
 
         logger.info(
-            "Set preprocessing parameters for xgboost, "
+            "Set preprocessing parameters for lightgbm, "
             "with current memory usage: {:.2f} GiB".format(
                 get_current_memory_gb()["memory_usage"]
             )
         )
 
         self.__core_train(train_dataset, val_dataset, **entity)
-        self.count += 1
 
     def _multiclass_train(self,
                           train_dataset: BaseDataset,
@@ -291,7 +284,7 @@ class GaussCatboost(ModelWrapper):
         assert self._task_name == ConstantValues.multiclass_classification
 
         params = self._model_params
-        params["objective"] = "multi:softmax"
+        params["objective"] = "multiclass"
 
         train_target_names = train_dataset.get_dataset().target_names
         eval_target_names = val_dataset.get_dataset().target_names
@@ -317,21 +310,20 @@ class GaussCatboost(ModelWrapper):
             )
 
         logger.info(
-            "Construct xgboost training dataset, "
+            "Construct lightgbm training dataset, "
             "with current memory usage: {:.2f} GiB".format(
                 get_current_memory_gb()["memory_usage"]
             )
         )
 
         logger.info(
-            "Set preprocessing parameters for xgboost, "
+            "Set preprocessing parameters for lightgbm, "
             "with current memory usage: {:.2f} GiB".format(
                 get_current_memory_gb()["memory_usage"]
             )
         )
 
         self.__core_train(train_dataset, val_dataset, **entity)
-        self.count += 1
 
     def _regression_train(self,
                           train_dataset: BaseDataset,
@@ -341,7 +333,7 @@ class GaussCatboost(ModelWrapper):
         assert self._train_flag == ConstantValues.train
 
         params = self._model_params
-        params["objective"] = "reg:squarederror"
+        params["objective"] = "regression"
 
         train_target_names = train_dataset.get_dataset().target_names
         eval_target_names = val_dataset.get_dataset().target_names
@@ -352,32 +344,35 @@ class GaussCatboost(ModelWrapper):
         self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
 
         logger.info(
-            "Construct xgboost training dataset, "
+            "Construct lightgbm training dataset, "
             "with current memory usage: {:.2f} GiB".format(
                 get_current_memory_gb()["memory_usage"]
             )
         )
 
+        logger.info(
+            "Set preprocessing parameters for lightgbm, "
+            "with current memory usage: {:.2f} GiB".format(
+                get_current_memory_gb()["memory_usage"]
+            )
+        )
         self.__core_train(train_dataset, val_dataset, **entity)
-        self.count += 1
 
     def _binary_increment(self, train_dataset: BaseDataset, **entity):
         """
-        This method is used to train xgboost (booster)
+        This method is used to train lightgbm (booster)
         model in binary classification.
         :param train_dataset: new boosting train dataset.
         :return: None
         """
-        params = self._model_params
-        params["objective"] = "binary:logistic"
-
+        decay_rate = self._decay_rate
         init_model_path = os.path.join(self._model_save_root, self._model_file_name)
         assert os.path.isfile(init_model_path)
 
         assert self._train_flag == ConstantValues.increment
         assert self._task_name == ConstantValues.binary_classification
 
-        xgb_entity = self.__xgb_preprocessing(
+        lgb_entity = self.__lgb_preprocessing(
             **Bunch(
                 label_name=self._target_names,
                 train_dataset=train_dataset,
@@ -390,40 +385,28 @@ class GaussCatboost(ModelWrapper):
             )
         )
 
-        xgb_train = xgb_entity.xgb_train
-
-        params.update({'process_type': 'update',
-                       'updater': 'refresh',
-                       'refresh_leaf': True})
-
-        num_boost_round = params.pop("num_boost_round")
-        params.pop("early_stopping")
-
-        self._model = xgb.train(
-            params=params,
-            dtrain=xgb_train,
-            xgb_model=init_model_path,
-            num_boost_round=num_boost_round,
-            verbose_eval=0,
-        )
+        dataset_bunch = lgb_entity.train_dataset
+        init_model = lgb.Booster(model_file=init_model_path)
+        assert 0 < decay_rate < 1, "Value: decay_rate must in (0, 1), but get {} instead.".format(decay_rate)
+        self._model = init_model.refit(data=dataset_bunch.data,
+                                       label=dataset_bunch.target,
+                                       decay_rate=decay_rate)
 
     def _multiclass_increment(self, train_dataset: BaseDataset, **entity):
         """
-        This method is used to train xgboost (booster)
+        This method is used to train lightgbm (booster)
         model in multiclass classification.
         :param train_dataset: new boosting train dataset.
         :return: None
         """
-        params = self._model_params
-        params["objective"] = "multi:softmax"
-
+        decay_rate = self._decay_rate
         init_model_path = os.path.join(self._model_save_root, self._model_file_name)
         assert os.path.isfile(init_model_path)
 
         assert self._train_flag == ConstantValues.increment
         assert self._task_name == ConstantValues.multiclass_classification
 
-        xgb_entity = self.__xgb_preprocessing(
+        lgb_entity = self.__lgb_preprocessing(
             **Bunch(
                 label_name=self._target_names,
                 train_dataset=train_dataset,
@@ -436,40 +419,29 @@ class GaussCatboost(ModelWrapper):
             )
         )
 
-        xgb_train = xgb_entity.xgb_train
+        dataset_bunch = lgb_entity.train_dataset
+        init_model = lgb.Booster(model_file=init_model_path)
+        assert 0 < decay_rate < 1, "Value: decay_rate must in (0, 1), but get {} instead.".format(decay_rate)
 
-        params.update({'process_type': 'update',
-                       'updater': 'refresh',
-                       'refresh_leaf': True})
-
-        num_boost_round = params.pop("num_boost_round")
-        params.pop("early_stopping")
-
-        self._model = xgb.train(
-            params=params,
-            dtrain=xgb_train,
-            xgb_model=init_model_path,
-            num_boost_round=num_boost_round,
-            verbose_eval=0,
-        )
+        self._model = init_model.refit(data=dataset_bunch.data,
+                                       label=dataset_bunch.target,
+                                       decay_rate=decay_rate)
 
     def _regression_increment(self, train_dataset: BaseDataset, **entity):
         """
-        This method is used to train xgboost (booster)
+        This method is used to train lightgbm (booster)
         model in regression.
         :param train_dataset: new boosting train dataset.
         :return: None
         """
-        params = self._model_params
-        params["objective"] = "reg:squarederror"
-
+        decay_rate = self._decay_rate
         init_model_path = os.path.join(self._model_save_root, self._model_file_name)
         assert os.path.isfile(init_model_path)
 
         assert self._train_flag == ConstantValues.increment
         assert self._task_name == ConstantValues.regression
 
-        xgb_entity = self.__xgb_preprocessing(
+        lgb_entity = self.__lgb_preprocessing(
             **Bunch(
                 label_name=self._target_names,
                 train_dataset=train_dataset,
@@ -482,29 +454,20 @@ class GaussCatboost(ModelWrapper):
             )
         )
 
-        xgb_train = xgb_entity.xgb_train
+        dataset_bunch = lgb_entity.train_dataset
+        init_model = lgb.Booster(model_file=init_model_path)
+        assert 0 < decay_rate < 1, "Value: decay_rate must in (0, 1), but get {} instead.".format(decay_rate)
 
-        params.update({'process_type': 'update',
-                       'updater': 'refresh',
-                       'refresh_leaf': True})
-
-        num_boost_round = params.pop("num_boost_round")
-        params.pop("early_stopping")
-
-        self._model = xgb.train(
-            params=params,
-            dtrain=xgb_train,
-            xgb_model=init_model_path,
-            num_boost_round=num_boost_round,
-            verbose_eval=0,
-        )
+        self._model = init_model.refit(data=dataset_bunch.data,
+                                       label=dataset_bunch.target,
+                                       decay_rate=decay_rate)
 
     def _predict_prob(self, infer_dataset: BaseDataset, **entity):
         assert self._train_flag == ConstantValues.inference
         model_file_path = os.path.join(self._model_save_root, self._model_file_name)
         assert os.path.isfile(model_file_path)
 
-        xgb_entity = self.__xgb_preprocessing(
+        lgb_entity = self.__lgb_preprocessing(
             **Bunch(
                 label_name=self._target_names,
                 infer_dataset=infer_dataset,
@@ -516,15 +479,23 @@ class GaussCatboost(ModelWrapper):
             )
         )
 
-        infer_dataset = xgb_entity.infer_dataset
-        xgb_infer = xgb_entity.xgb_infer
+        infer_dataset = lgb_entity.infer_dataset
         assert "data" in infer_dataset
 
-        self._model = xgb.Booster(
+        self._model = lgb.Booster(
             model_file=model_file_path
         )
 
-        inference_result = self._model.predict(data=xgb_infer, output_margin=False)
+        if self._increment_flag is True:
+            inference_result = self._model.predict(data=infer_dataset.data, raw_score=False)
+            if self._task_name == ConstantValues.binary_classification:
+                inference_result = special.expit(inference_result)
+            elif self._task_name == ConstantValues.multiclass_classification:
+                inference_result = special.softmax(inference_result)
+            else:
+                assert self._task_name == ConstantValues.regression
+        else:
+            inference_result = self._model.predict(data=infer_dataset.data, raw_score=False)
         inference_result = pd.DataFrame({"result": inference_result})
         return inference_result
 
@@ -534,7 +505,7 @@ class GaussCatboost(ModelWrapper):
         model_file_path = os.path.join(self._model_save_root, self._model_file_name)
         assert os.path.isfile(model_file_path)
 
-        xgb_entity = self.__xgb_preprocessing(
+        lgb_entity = self.__lgb_preprocessing(
             **Bunch(
                 label_name=self._target_names,
                 infer_dataset=infer_dataset,
@@ -546,15 +517,14 @@ class GaussCatboost(ModelWrapper):
             )
         )
 
-        infer_dataset = xgb_entity.infer_dataset
-        xgb_infer = xgb_entity.xgb_infer
+        infer_dataset = lgb_entity.infer_dataset
         assert "data" in infer_dataset
 
-        self._model = xgb.Booster(
+        self._model = lgb.Booster(
             model_file=model_file_path
         )
 
-        inference_result = self._model.predict(data=xgb_infer, output_margin=True)
+        inference_result = self._model.predict(data=infer_dataset.data, raw_score=True)
         inference_result = pd.DataFrame({"result": inference_result})
         return inference_result
 
@@ -587,7 +557,7 @@ class GaussCatboost(ModelWrapper):
         assert "data" in val_dataset.get_dataset() and "target" in val_dataset.get_dataset()
 
         # 去除label name
-        xgb_entity = self.__xgb_preprocessing(
+        lgb_entity = self.__lgb_preprocessing(
             **Bunch(
                 label_name=self._target_names,
                 train_dataset=train_dataset,
@@ -600,10 +570,8 @@ class GaussCatboost(ModelWrapper):
             )
         )
 
-        train_dataset = xgb_entity.train_dataset
-        xgb_train = xgb_entity.xgb_train
-        eval_dataset = xgb_entity.eval_dataset
-        xgb_eval = xgb_entity.xgb_eval
+        train_dataset = lgb_entity.train_dataset
+        eval_dataset = lgb_entity.eval_dataset
 
         train_data, train_label, train_target_names = train_dataset.data, train_dataset.target, train_dataset.target_names
         eval_data, eval_label, eval_target_names = eval_dataset.data, eval_dataset.target, eval_dataset.target_names
@@ -619,12 +587,13 @@ class GaussCatboost(ModelWrapper):
                 get_current_memory_gb()["memory_usage"]
             )
         )
+
         # 默认生成的为预测值的概率值，传入metric之后再处理.
         val_y_pred = self._model.predict(
-            xgb_eval
+            eval_data
         )
 
-        train_y_pred = self._model.predict(xgb_train)
+        train_y_pred = self._model.predict(train_data)
 
         assert isinstance(val_y_pred, np.ndarray)
         assert isinstance(train_y_pred, np.ndarray)
@@ -728,23 +697,22 @@ class GaussCatboost(ModelWrapper):
         is_higher_better = True if metric_result.optimize_mode == "maximize" else False
         return metric_result.metric_name, float(metric_result.result), is_higher_better
 
-    def __xgb_preprocessing(self, **params):
-        xgb_entity = Bunch()
-        if ConstantValues.train_dataset in params and params[ConstantValues.train_dataset]:
+    def __lgb_preprocessing(self, **params):
+        lgb_entity = Bunch()
+        if "train_dataset" in params and params[ConstantValues.train_dataset]:
             params["dataset"] = params.pop("train_dataset")
-            xgb_train, train_dataset = self.__load_data(**params)
-            xgb_entity.xgb_train = xgb_train
-            xgb_entity.train_dataset = train_dataset
+            lgb_train, train_dataset = self.__load_data(**params)
+            lgb_entity.lgb_train = lgb_train
+            lgb_entity.train_dataset = train_dataset
 
-        if ConstantValues.val_dataset in params and params[ConstantValues.val_dataset]:
+        if "val_dataset" in params and params[ConstantValues.val_dataset]:
             params["dataset"] = params.pop("val_dataset")
-            xgb_eval, eval_dataset = self.__load_data(**params)
-            xgb_entity.xgb_eval = xgb_eval
-            xgb_entity.eval_dataset = eval_dataset
+            lgb_eval, eval_dataset = self.__load_data(**params)
+            lgb_entity.lgb_eval = lgb_eval
+            lgb_entity.eval_dataset = eval_dataset
 
-        if ConstantValues.infer_dataset in params and params[ConstantValues.infer_dataset]:
+        if "infer_dataset" in params and params[ConstantValues.infer_dataset]:
             params["dataset"] = params.pop("infer_dataset")
-            xgb_infer, infer_dataset = self.__load_data(**params)
-            xgb_entity.xgb_infer = xgb_infer
-            xgb_entity.infer_dataset = infer_dataset
-        return xgb_entity
+            infer_dataset = self.__load_data(**params)
+            lgb_entity.infer_dataset = infer_dataset
+        return lgb_entity

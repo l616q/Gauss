@@ -51,9 +51,11 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
             train_flag=params[ConstantValues.train_flag],
             enable=params[ConstantValues.enable],
             task_name=params[ConstantValues.task_name],
-            feature_configure_path=params[ConstantValues.feature_configure_path]
+            source_file_path=params[ConstantValues.source_file_path],
+            final_file_path=params[ConstantValues.final_file_path]
         )
-        self._final_file_path = params[ConstantValues.final_file_path]
+
+        self.__callback_func = params[ConstantValues.callback_func]
 
         self._optimize_mode = None
 
@@ -70,10 +72,10 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
 
         self._optimal_metrics = None
 
-        self.__set_default_params()
-        self.__set_search_space()
+        self.__load_topk_default_params()
+        self.__load_topk_search_space()
 
-    def __train_selector(self, **entity):
+    def __select_through_tree(self, **entity):
         assert "train_dataset" in entity.keys()
         assert "val_dataset" in entity.keys()
 
@@ -81,7 +83,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         selector_model_tuner = entity["selector_auto_ml"]
         feature_configure = entity["feature_configure"]
 
-        feature_configure.file_path = self._feature_configure_path
+        feature_configure.file_path = self._source_file_path
         feature_configure.parse(method="system")
         entity[ConstantValues.selector_model].update_feature_conf(feature_conf=feature_configure)
 
@@ -96,7 +98,14 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         selector_entity["model"].set_best_model()
         selector = selector_entity["model"].model
 
-        assert isinstance(selector, lgb.Booster)
+        if not isinstance(selector, lgb.Booster):
+            message = "Selector should be type of lgb.Booster, but get {} instead.".format(type(selector))
+            self.__callback_func(type_name="component_configure",
+                                 object_name="supervised_feature_selector",
+                                 success_flag=False,
+                                 message=message)
+            raise TypeError(message)
+
         feature_name_list = selector.feature_name()
         importance_list = list(selector.feature_importance())
         feature_importance_pair = [(fe, round(im, 2)) for fe, im in zip(feature_name_list, importance_list)]
@@ -113,19 +122,26 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
             "Starting training supervised selectors, with current memory usage: %.2f GiB",
             get_current_memory_gb()["memory_usage"]
         )
+        try:
+            assert "train_dataset" in entity.keys()
+            assert "val_dataset" in entity.keys()
+            assert "model" in entity.keys()
+            assert "metric" in entity.keys()
+            assert "auto_ml" in entity.keys()
+            assert "feature_configure" in entity.keys()
+            assert "loss" in entity.keys()
+            assert "selector_model" in entity.keys()
+            assert "selector_auto_ml" in entity.keys()
+            assert "selector_metric" in entity.keys()
+        except AssertionError:
+            message = "At least an entity or Component is lost."
+            self.__callback_func(type_name="component_configure",
+                                 object_name="supervised_feature_selector",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
-        assert "train_dataset" in entity.keys()
-        assert "val_dataset" in entity.keys()
-        assert "model" in entity.keys()
-        assert "metric" in entity.keys()
-        assert "auto_ml" in entity.keys()
-        assert "feature_configure" in entity.keys()
-        assert "loss" in entity.keys()
-        assert "selector_model" in entity.keys()
-        assert "selector_auto_ml" in entity.keys()
-        assert "selector_metric" in entity.keys()
-
-        feature_importance_pair = self.__train_selector(**entity)
+        feature_importance_pair = self.__select_through_tree(**entity)
 
         train_dataset = entity[ConstantValues.train_dataset]
         val_dataset = entity[ConstantValues.val_dataset]
@@ -183,6 +199,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
                 return int(columns * col_ratio)
 
             parameters["topk"] = len_features(parameters["topk"])
+            print(parameters["topk"])
 
             feature_list = [item[0] for item in feature_importance_pair[:parameters["topk"]]]
             logger.info(
@@ -201,7 +218,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
                     get_current_memory_gb()["memory_usage"]
                 )
             )
-            feature_configure.file_path = self._feature_configure_path
+            feature_configure.file_path = self._source_file_path
 
             feature_configure.parse(method="system")
             feature_configure.feature_select(feature_list=feature_list,
@@ -246,25 +263,44 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         self._final_feature_names = model.feature_list
 
         if isinstance(train_dataset.get_dataset().data, pd.DataFrame):
-            self.final_configure_generation()
+            self.__generate_final_configure()
         else:
-            raise TypeError(
-                "Training data must be type: pd.Dataframe but get {} instead".format(
+            message = "Training data must be type: pd.Dataframe but get {} instead".format(
                     type(train_dataset.get_dataset().data))
-            )
+            self.__callback_func(type_name="component_configure",
+                                 object_name="supervised_feature_selector",
+                                 success_flag=False,
+                                 message=message)
+            raise TypeError(message)
+
+        message = "Supervised feature selector executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="supervised_feature_selector",
+                             success_flag=True,
+                             message=message)
 
     def _increment_run(self, **entity):
-        pass
+        message = "Class: SupervisedFeatureSelector has no increment function."
+        self.__callback_func(type_name="component_configure",
+                             object_name="supervised_feature_selector",
+                             success_flag=False,
+                             message=message)
+        raise RuntimeError(message)
 
     def _predict_run(self, **entity):
-        pass
+        message = "Class: SupervisedFeatureSelector has no predict function."
+        self.__callback_func(type_name="component_configure",
+                             object_name="supervised_feature_selector",
+                             success_flag=False,
+                             message=message)
+        raise RuntimeError(message)
 
-    def final_configure_generation(self):
+    def __generate_final_configure(self):
         """
         Write configure file
         :return:
         """
-        feature_conf = yaml_read(yaml_file=self._feature_configure_path)
+        feature_conf = yaml_read(yaml_file=self._source_file_path)
         logger.info("final_feature_names: %s", str(self._final_feature_names))
         for item in feature_conf.keys():
             if item not in self._final_feature_names:
@@ -281,7 +317,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         assert self._search_space is not None
         return self._search_space
 
-    def __set_search_space(self):
+    def __load_topk_search_space(self):
         """
         Read search space file.
         :return:
@@ -318,7 +354,7 @@ class ImprovedSupervisedFeatureSelector(BaseFeatureSelector):
         """
         return self._default_parameters
 
-    def __set_default_params(self):
+    def __load_topk_default_params(self):
         """
         Read default parameters.
         :return: None

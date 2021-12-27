@@ -46,11 +46,11 @@ def reduce_data(data_path: str = None, dataframe: pd.DataFrame = None, column_na
                     df[col] = df[col].astype(np.int64)
             else:
                 if c_min >= np.finfo(np.float16).min and c_max <= np.finfo(np.float16).max:
-                    df[col] = df[col].astype(np.float16)
+                    df[col] = df[col].astype(dtype=np.float64)
                 elif c_min >= np.finfo(np.float32).min and c_max <= np.finfo(np.float32).max:
-                    df[col] = df[col].astype(np.float32)
+                    df[col] = df[col].astype(dtype=np.float64)
                 else:
-                    df[col] = df[col].astype(np.float64)
+                    df[col] = df[col].astype(dtype=np.float64)
         else:
             df[col] = df[col].astype('category')
 

@@ -22,21 +22,15 @@ from utils.yaml_exec import yaml_write
 
 
 class PlainTypeInference(BaseTypeInference):
-    """
-    1、如果存在某一列的特征是50%数字和50%的字母，这种id特征也是合理的，需要进行处理。
-    2、typeinference中，需要将噪声数据全部重置为缺失值。
-    """
     def __init__(self, **params):
         """
         TypeInference object can just change dataset, abnormal data in dataset will improve in PlainDataClear object.
-        :param name:
-        :param task_name:
-        :param train_flag:
-        :param source_file_path:
-        :param final_file_path:
-        :param final_file_prefix:
+        :param name: type inference name
+        :param task_name: str object, optional: binary_classification, multiclass_classification, regression
+        :param train_flag: str object, optional: train, increment, inference
+        :param source_file_path: input feature configure file path
+        :param final_file_path: output feature configure file path
         """
-
         super(PlainTypeInference, self).__init__(
             name=params[ConstantValues.name],
             train_flag=params[ConstantValues.train_flag],
@@ -45,6 +39,7 @@ class PlainTypeInference(BaseTypeInference):
             final_file_path=params[ConstantValues.final_file_path]
         )
 
+        self.__callback_func = params[ConstantValues.callback_func]
         assert params[ConstantValues.task_name] in [ConstantValues.binary_classification,
                                                     ConstantValues.multiclass_classification,
                                                     ConstantValues.regression]
@@ -73,21 +68,32 @@ class PlainTypeInference(BaseTypeInference):
                              "size": item_feature_conf.size,
                              "used": item_feature_conf.used}
                 yaml_dict[item] = item_dict
-            yaml_write(yaml_dict=yaml_dict, yaml_file=os.path.join(final_root, "user_feature.yaml"))
+            yaml_write(yaml_dict=yaml_dict, yaml_file=os.path.join(final_root,
+                                                                   "user_feature.yaml"))
         else:
             self.init_feature_configure = None
 
-        self.final_feature_configure = FeatureConf(name='target feature path', file_path=params["final_file_path"])
+        self.final_feature_configure = FeatureConf(name='target feature path',
+                                                   file_path=params["final_file_path"],
+                                                   callback_func=params[ConstantValues.callback_func])
 
     def _train_run(self, **entity):
         assert ConstantValues.train_dataset in entity.keys()
 
         self.__remove_columns(dataset=entity[ConstantValues.train_dataset])
+
         self._dtype_inference(dataset=entity[ConstantValues.train_dataset])
         self._ftype_inference(dataset=entity[ConstantValues.train_dataset])
+
         self._check_target_columns(dataset=entity[ConstantValues.train_dataset])
+
         self.__check_init_final_conf()
         self.__generate_final_configure()
+        message = "Plain type inference executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="type_inference",
+                             success_flag=True,
+                             message=message)
 
     def _increment_run(self, **entity):
         # just detect error in test dataset.
@@ -96,7 +102,18 @@ class PlainTypeInference(BaseTypeInference):
         conf = yaml_read(yaml_file=self._final_file_path)
 
         for col in entity[ConstantValues.increment_dataset].get_dataset().data.columns:
-            assert col in list(conf)
+            if col not in list(conf):
+                message = "Column: {} is not in feature configure file.".format(col)
+                self.__callback_func(type_name="component_configure",
+                                     object_name="type_inference",
+                                     success_flag=False,
+                                     message=message)
+
+        message = "Plain type inference executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="type_inference",
+                             success_flag=True,
+                             message=message)
 
     def _predict_run(self, **entity):
         # just detect error in test dataset.
@@ -106,7 +123,19 @@ class PlainTypeInference(BaseTypeInference):
 
         column_names = entity["infer_dataset"].get_dataset().data.columns
         for col in column_names:
-            assert col in list(conf), "Column: {} is not in feature configure file.".format(col)
+            if col not in list(conf):
+                message = "Column: {} is not in feature configure file.".format(col)
+                self.__callback_func(type_name="component_configure",
+                                     object_name="type_inference",
+                                     success_flag=False,
+                                     message=message)
+                raise ValueError(message)
+
+        message = "Plain type inference executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="type_inference",
+                             success_flag=True,
+                             message=message)
 
     def __select_string_columns(self, feature_name: str):
         if self.init_feature_configure is not None \
@@ -222,9 +251,13 @@ class PlainTypeInference(BaseTypeInference):
                 else:
                     feature_item_configure.dtype = 'string'
             else:
-                raise TypeError(
-                    "Unknown dtype {} in column: {}, index: {}.".format(
-                        data_dtypes[col_index], column, col_index))
+                message = "Unknown dtype {} in column: {}, index: {}.".format(
+                        data_dtypes[col_index], column, col_index)
+                self.__callback_func(type_name="component_configure",
+                                     object_name="type_inference",
+                                     success_flag=False,
+                                     message=message)
+                raise TypeError(message)
 
             self.final_feature_configure.add_item_type(column_name=column, feature_item_conf=feature_item_configure)
             self.__select_string_columns(feature_name=column)
@@ -315,9 +348,15 @@ class PlainTypeInference(BaseTypeInference):
             for item in feature_dict.keys():
                 feature_name = feature_dict[item].name
                 if feature_name not in feature_names:
+                    message = "Features:{} in feature configure is not consistent with features in dataset.".format(
+                            feature_name)
+                    self.__callback_func(type_name="component_configure",
+                                         object_name="type_inference",
+                                         success_flag=False,
+                                         message=message)
                     raise ValueError(
-                        "Features:{} in feature configure is not consistent with features in dataset.".format(
-                            feature_name))
+                        message
+                        )
                 used_flag = feature_dict[item].used
                 if not used_flag:
                     data.drop([feature_name], axis=1, inplace=True)

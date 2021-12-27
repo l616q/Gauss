@@ -21,26 +21,21 @@ from utils.base import get_current_memory_gb
 
 
 class UnsupervisedFeatureSelector(BaseFeatureSelector):
-
     def __init__(self, **params):
-
         """
-        :param name:
-        :param train_flag:
-        :param enable:
-        :param feature_config_path:
-        :param label_encoding_configure_path:
-        :param feature_select_configure_path:
+        param name: component name
+        :param train_flag: string object.
+        param enable: bool object.
         """
-        super(UnsupervisedFeatureSelector, self).__init__(name=params["name"],
-                                                          train_flag=params["train_flag"],
-                                                          enable=params["enable"],
-                                                          task_name=params["task_name"],
-                                                          feature_configure_path=params["feature_config_path"])
+        super().__init__(
+            name=params[ConstantValues.name],
+            train_flag=params[ConstantValues.train_flag],
+            enable=params[ConstantValues.enable],
+            task_name=params[ConstantValues.task_name],
+            source_file_path=params[ConstantValues.source_file_path],
+            final_file_path=params[ConstantValues.final_file_path])
 
-        self.feature_list = []
-        self._final_file_path = params["final_file_path"]
-
+        self.__callback_func = params[ConstantValues.callback_func]
         self._feature_conf = None
 
     def _train_run(self, **entity):
@@ -55,7 +50,7 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
         data = dataset.get_dataset().data
 
         logger.info("Unsupervised feature selector component flag: " + str(self._enable))
-        self._feature_conf = yaml_read(self._feature_configure_path)
+        self._feature_conf = yaml_read(self._source_file_path)
 
         logger.info("Remove datetime features, " + "with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
@@ -64,14 +59,21 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
                 self._feature_conf[col]["used"] = False
                 data.drop([col], axis=1, inplace=True)
 
-        logger.info("Starting unsupervised feature selecting, method: featuretools feature selection, " + "with current memory usage: %.2f GiB",
+        logger.info("Starting unsupervised feature selecting, method: featuretools feature selection, "
+                    "with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
 
         if self._enable is True:
-            self._ft_method(features=data)
+            self.__ft_method(features=data)
 
         dataset.get_dataset().generated_feature_names = list(data.columns)
-        self.final_configure_generation(dataset=dataset)
+        self.__final_configure_generation(dataset=dataset)
+
+        message = "Unsupervised feature selector executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="unsupervised_feature_selector",
+                             success_flag=True,
+                             message=message)
 
     def _increment_run(self, **entity):
         assert ConstantValues.increment_dataset in entity.keys()
@@ -84,6 +86,12 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
             dataset.get_dataset().data = dataset.get_dataset().data[generated_feature_names]
             dataset.get_dataset().generated_feature_names = generated_feature_names
 
+        message = "Unsupervised feature selector executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="unsupervised_feature_selector",
+                             success_flag=True,
+                             message=message)
+
     def _predict_run(self, **entity):
         assert "infer_dataset" in entity.keys()
 
@@ -95,45 +103,57 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
             dataset.get_dataset().data = dataset.get_dataset().data[generated_feature_names]
             dataset.get_dataset().generated_feature_names = generated_feature_names
 
+        message = "Unsupervised feature selector executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="unsupervised_feature_selector",
+                             success_flag=True,
+                             message=message)
+
     @classmethod
-    def _chi2_method(cls, features, target, k):
+    def __chi2_method(cls, features, target, k):
         """ Compute chi-squared stats between each non-negative feature and class.
         This method should just be used for classification.
 
         :param features: features for dataset.
         :param target: labels for dataset.
-        :return:array-like data structure depends on input. notes: return values will override BaseDataset object
+        :return:array-like data structure depends on input.
+        notes: return values will override BaseDataset object
         """
         features = SelectKBest(chi2, k=k).fit_transform(features, target)
 
         return features
 
-    def _ft_method(self, features: pd.DataFrame):
+    def __ft_method(self, features: pd.DataFrame):
         """
         :param features:
         :return:
         """
 
-        logger.info("Starting to remove low information features, " + "with current memory usage: %.2f GiB, total features: %d",
+        logger.info("Starting to remove low information features, "
+                    "with current memory usage: %.2f GiB, total features: %d",
                     get_current_memory_gb()["memory_usage"], len(features.columns))
-        self.remove_low_information_features(features)
+        self.__remove_low_information_features(features)
 
-        logger.info("Starting to remove highly null features, " + "with current memory usage: %.2f GiB, total features: %d",
+        logger.info("Starting to remove highly null features, "
+                    "with current memory usage: %.2f GiB, total features: %d",
                     get_current_memory_gb()["memory_usage"], len(features.columns))
-        self.remove_highly_null_features(features)
+        self.__remove_highly_null_features(features)
 
-        logger.info("Starting to remove single value features, " + "with current memory usage: %.2f GiB, total features: %d",
+        logger.info("Starting to remove single value features, "
+                    "with current memory usage: %.2f GiB, total features: %d",
                     get_current_memory_gb()["memory_usage"], len(features.columns))
-        self.remove_single_value_features(features)
+        self.__remove_single_value_features(features)
 
         # remove remove_highly_correlated_features() method.
         # logger.info("Starting to remove_highly_correlated_features, " + "with current memory usage: %.2f GiB",
         #                     get_current_memory_gb()["memory_usage"])
         # self.remove_highly_correlated_features(features)
-        logger.info("Unsupervised feature selecting has finished, " + "with current memory usage: %.2f GiB, total features: %d",
-                    get_current_memory_gb()["memory_usage"], len(features.columns))
 
-    def final_configure_generation(self, dataset: BaseDataset):
+        logger.info(
+            "Unsupervised feature selecting has finished, " + "with current memory usage: %.2f GiB, total features: %d",
+            get_current_memory_gb()["memory_usage"], len(features.columns))
+
+    def __final_configure_generation(self, dataset: BaseDataset):
         if self._enable:
             generated_feature_names = dataset.get_dataset().get("generated_feature_names")
             assert generated_feature_names is not None
@@ -145,7 +165,7 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
         yaml_write(yaml_dict=self._feature_conf, yaml_file=self._final_file_path)
 
     @classmethod
-    def remove_low_information_features(cls, feature_matrix):
+    def __remove_low_information_features(cls, feature_matrix):
         """Select features that have at least 2 unique values and that are not all null
 
             Args:
@@ -164,8 +184,9 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
         features = list(set(columns).difference(set(features)))
         feature_matrix.drop(features, axis=1, inplace=True)
 
-    @classmethod
-    def remove_highly_null_features(cls, feature_matrix, pct_null_threshold=0.95):
+    def __remove_highly_null_features(self,
+                                      feature_matrix,
+                                      pct_null_threshold=0.95):
         """
             Removes columns from a feature matrix that have higher than a set threshold
             of null values.
@@ -181,7 +202,13 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
                     If no feature list is provided as input, the feature list will not be returned.
         """
         if pct_null_threshold < 0 or pct_null_threshold > 1:
-            raise ValueError("pct_null_threshold must be a float between 0 and 1, inclusive.")
+            message = "pct_null_threshold must be a float between 0 and 1, inclusive."
+            self.__callback_func(type_name="component_configure",
+                                 object_name="unsupervised_feature_selector",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
+
         columns = feature_matrix.columns
         percent_null_by_col = {}
         for feature in columns:
@@ -198,7 +225,9 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
         feature_matrix.drop(features, axis=1, inplace=True)
 
     @classmethod
-    def remove_single_value_features(cls, feature_matrix, count_nan_as_value=False):
+    def __remove_single_value_features(cls,
+                                       feature_matrix,
+                                       count_nan_as_value=False):
         """Removes columns in feature matrix where all the values are the same.
 
             Args:
@@ -223,9 +252,11 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
         features = list(set(columns).difference(set(keep)))
         feature_matrix.drop(features, axis=1, inplace=True)
 
-    @classmethod
-    def remove_highly_correlated_features(cls, feature_matrix, pct_corr_threshold=0.95,
-                                          features_to_check=None, features_to_keep=None):
+    def __remove_highly_correlated_features(self,
+                                            feature_matrix,
+                                            pct_corr_threshold=0.95,
+                                            features_to_check=None,
+                                            features_to_keep=None):
 
         """Removes columns in feature matrix that are highly correlated with another column.
 
@@ -256,13 +287,24 @@ class UnsupervisedFeatureSelector(BaseFeatureSelector):
                     do not change the order of features outputted by dfs.
         """
         if pct_corr_threshold < 0 or pct_corr_threshold > 1:
-            raise ValueError("pct_corr_threshold must be a float between 0 and 1, inclusive.")
+            message = "pct_corr_threshold must be a float between 0 and 1, inclusive."
+            self.__callback_func(type_name="component_configure",
+                                 object_name="unsupervised_feature_selector",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         if features_to_check is None:
             features_to_check = feature_matrix.columns
         else:
             for f_name in features_to_check:
-                assert f_name in feature_matrix.columns, "feature named {} is not in feature matrix".format(f_name)
+                if f_name not in feature_matrix.columns:
+                    message = "feature named {} is not in feature matrix".format(f_name)
+                    self.__callback_func(type_name="component_configure",
+                                         object_name="unsupervised_feature_selector",
+                                         success_flag=False,
+                                         message=message)
+                    raise ValueError(message)
 
         if features_to_keep is None:
             features_to_keep = []

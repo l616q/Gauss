@@ -17,9 +17,9 @@ import numpy as np
 from sklearn.datasets import load_svmlight_file
 from sklearn.utils import shuffle
 
-from utils.bunch import Bunch
 from entity.dataset.base_dataset import BaseDataset
-from utils.Logger import logger
+
+from utils.bunch import Bunch
 from utils.constant_values import ConstantValues
 from utils.reduce_data import reduce_data
 
@@ -38,20 +38,22 @@ class PlaintextDataset(BaseDataset):
         """
         Two kinds of raw data supported:
             1. The first is read file whose format is an option in `.csv`, `.txt`,and
-        `.libsvm`, data after processing will wrapped into a `Bunch` object which contains
+        `.libsvm`, data after processing will wrapper into a `Bunch` object which contains
         `data` and `target`, meanwhile `feature_names` and `target_name` also can be a
-        content when exist.
+        content when existed.
             2. Pass a `data_package` wrapped by Bunch to the construct function, `data` and
-        `target` must provided at least.
+        `target` must be provided at least.
         ======
         :param name: A string to represent module's name.
-        :param data_path:  A string or `dict`; if string, it can be directly used by load data
+        :param data_path:  A string or `dict`; if strung, it can be directly used by load data
             function, otherwise `train_dataset` and `val_dataset` must be the key of the dict.
         :param data_package: default is None, must be filled if data_path not applied.
         :param task_type: A string which is an option between `classification` or `regression`.
         :param target_name: A `list` containing label names in string format.
         :param memory_only: a boolean value, true for memory, false for others, default True.
         """
+        self.__callback_func = params[ConstantValues.callback_func]
+
         for item in [ConstantValues.data_package,
                      ConstantValues.data_path,
                      ConstantValues.target_names,
@@ -77,16 +79,24 @@ class PlaintextDataset(BaseDataset):
         self._target_names = params[ConstantValues.target_names]
         self.__type_doc = params[ConstantValues.data_file_type]
 
-        assert isinstance(self._target_names, List) or self._target_names is None, "Value: target_name is {}".format(
-            self._target_names)
+        if not isinstance(self._target_names, List) and self._target_names is not None:
+            message = "Value: target_names is illegal, and target names is {}.".format(self._target_names)
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         self._default_print_size = 5
         self._bunch = None
 
+        if self._name == ConstantValues.val_dataset:
+            self._column_name_flag = False
+        else:
+            self._column_name_flag = params[ConstantValues.column_name_flag]
+
         if self._name == ConstantValues.train_dataset or self._name == ConstantValues.val_dataset:
             self.__use_weight_flag = params[ConstantValues.use_weight_flag]
-            if self._name == ConstantValues.train_dataset:
-                self._column_name_flag = params[ConstantValues.column_name_flag]
             assert isinstance(self.__use_weight_flag, bool), "This value should be bool type, but get {}".format(
                 self.__use_weight_flag)
             if self._name == ConstantValues.val_dataset:
@@ -109,23 +119,39 @@ class PlaintextDataset(BaseDataset):
         self._need_data_clear = False
         self.load_data()
 
-    def load_data(self):
+        message = "Loading dataset successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="dataset",
+                             success_flag=True,
+                             message=message)
+
+    def load_data(self, **configure):
         if self._data_path is not None and self.__train_dataset is None:
             if not isinstance(self._column_name_flag, bool):
-                raise ValueError(
-                    "Value: column name flag should be type of bool, "
-                    "but get {} instead.".format(
-                        self._column_name_flag))
+                message = "Value: column name flag should be type of bool, but get {} instead.".format(
+                    self._column_name_flag)
+                self.__callback_func(type_name="entity_configure",
+                                     object_name="dataset",
+                                     success_flag=False,
+                                     message=message)
+                raise ValueError(message)
+
             self.__load_data_from_path()
         elif self._data_path is not None and self.__train_dataset is not None:
             if self.__type_doc == "csv":
                 self.__load_val_dataset()
             else:
                 self.__load_data_from_path()
+            del self.__train_dataset
         elif self._data_path is None and self.__train_dataset is None and self._data_package is not None:
             self.__load_data_from_memory()
         else:
-            raise ValueError("Value: data path and data package is all None.")
+            message = "Value: data path and data package is all None."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
     def __repr__(self):
         data = self._bunch.data
@@ -150,11 +176,15 @@ class PlaintextDataset(BaseDataset):
         train_weight_column_names = train_dataset.weight_column_names
         train_weight_index = train_dataset.weight_index
         train_column_name_flag = train_dataset.column_name_flag
+
         if not isinstance(train_column_name_flag, bool):
-            raise ValueError(
-                "Value: train column name flag should be type of bool, "
-                "but get {} instead.".format(
-                    train_column_name_flag))
+            message = "Value: train column name flag should be type of bool, " \
+                      "but get {} instead.".format(train_column_name_flag)
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         train_target_index = train_dataset.target_index
         train_target_names = train_dataset.target_names
@@ -170,14 +200,21 @@ class PlaintextDataset(BaseDataset):
             else:
                 self._target_names = train_target_index
                 self._weight_column_names = train_weight_index
+
+                if self._bunch is None:
+                    self._bunch = Bunch()
+
+                self._bunch.proportion = train_dataset.get_dataset().proportion
                 self.__load_data_from_path()
+
                 self._bunch.data.columns = train_dataset.get_dataset().data.columns
                 self._bunch.target.columns = train_dataset.get_dataset().target.columns
                 self._bunch.feature_names = train_dataset.get_dataset().feature_names
                 self._bunch.target_names = train_dataset.get_dataset().target_names
-                self._bunch.dataset_weight.columns = train_dataset.get_dataset().dataset_weight.columns
                 self._bunch.label_class = train_dataset.get_dataset().label_class
-                self._bunch.proportion = train_dataset.get_dataset().proportion
+
+                if self.__use_weight_flag:
+                    self._bunch.dataset_weight.columns = train_dataset.get_dataset().dataset_weight.columns
         else:
             self._column_name_flag = False
             self._target_names = train_target_names
@@ -185,21 +222,36 @@ class PlaintextDataset(BaseDataset):
             self.__load_data_from_path()
 
     def __load_origin_dataset(self):
-        assert self.__type_doc == "csv", \
-            "Value: type doc should be csv, but get {} instead.".format(
+        if self.__type_doc != "csv":
+            message = "Value: type doc should be csv, but get {} instead.".format(
                 self.__type_doc)
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
+
         if self._name == ConstantValues.train_dataset:
             data = reduce_data(data_path=self._data_path,
                                column_name_flag=self._column_name_flag)
             self.__column_names = list(data.columns)
         else:
-            raise RuntimeError("This method is only used in train dataset or val dataset.")
+            message = "This method is only used in train dataset or val dataset."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
     def __load_data_from_memory(self):
         if not isinstance(self._data_package, dict):
-            raise TypeError(
-                "Value: data package should be type of dict, but get {} instead.".format(
-                    type(self._data_package)))
+            message = "Value: data package should be type of dict, but get {} instead.".format(
+                    type(self._data_package))
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise TypeError(message)
         self._bunch = self._data_package
         self._data_package = None
 
@@ -215,36 +267,43 @@ class PlaintextDataset(BaseDataset):
             self.__type_doc = self._data_path.split(".")[-1]
 
         if self.__type_doc not in ["csv", "libsvm", "txt"]:
-            raise TypeError(
-                "Unsupported file, excepted option in `csv`, `libsvm`, "
-                "`txt`, {} received.".format(self.__type_doc)
-            )
-
-        data = None
-        target = None
-        feature_names = None
-        target_names = None
-        weight = None
+            message = "Unsupported file, excepted option in `csv`, " \
+                      "`libsvm`, `txt`, {} received.".format(self.__type_doc)
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise TypeError(message)
 
         if self.__type_doc == "csv":
             try:
                 data, target, feature_names, target_names, weight = self.load_csv()
             except IOError:
-                logger.info("File path does not exist.")
-            finally:
-                logger.info(".csv file has been converted to Bunch object.")
+                message = "File path does not exist."
+                self.__callback_func(type_name="entity_configure",
+                                     object_name="dataset",
+                                     success_flag=False,
+                                     message=message)
+                raise IOError(message)
+            except ValueError:
+                message = "Value: file type is wrong, or label: {} may not be in dataset file.".format(
+                    self._target_names)
+                self.__callback_func(type_name="entity_configure",
+                                     object_name="dataset",
+                                     success_flag=False,
+                                     message=message)
+                raise ValueError(message)
         elif self.__type_doc == 'libsvm':
-            try:
-                data, target, feature_names, target_names, weight = self.load_libsvm()
-            finally:
-                logger.info(".libsvm file has been converted to Bunch object.")
+            data, target, feature_names, target_names, weight = self.load_libsvm()
         elif self.__type_doc == 'txt':
-            try:
-                data, target, feature_names, target_names, weight = self.load_txt()
-            finally:
-                logger.info(".txt file has been converted to Bunch object.")
+            data, target, feature_names, target_names, weight = self.load_txt()
         else:
-            raise TypeError("File type can not be accepted.")
+            message = "File type can not be accepted."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise TypeError(message)
 
         self._bunch = Bunch(data=data,
                             target=target,
@@ -273,12 +332,28 @@ class PlaintextDataset(BaseDataset):
 
     def __set_proportion(self):
         if self._bunch is None:
-            raise ValueError("Dataset has not been loaded.")
+            message = "Dataset has not been loaded."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise TypeError(message)
         if self._bunch.get("proportion"):
-            raise ValueError("Value: self._proportion must be empty.")
+            message = "Value: self._proportion must be empty."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
         if not isinstance(self._bunch, Bunch):
-            raise AttributeError("Value: self._bunch must be type: Bunch, "
-                                 "but get {} instead.".format(type(self._bunch)))
+            message = "Value: self._bunch must be type: Bunch, but get {} instead.".format(
+                type(self._bunch))
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise AttributeError(message)
+
         target = self._bunch.target
         target_names = self._bunch.target_names[0]
 
@@ -320,7 +395,7 @@ class PlaintextDataset(BaseDataset):
 
     def __dict_set_weight(self):
         """
-        # eg. {"target_A": {1: 1.9, -1: 1}}, {-1: {1: 1.9, -1: 1}},
+        # e.g. {"target_A": {1: 1.9, -1: 1}}, {-1: {1: 1.9, -1: 1}},
         if label weight dict has been set, this weight will be used, otherwise weight will be set 1.
         Note: column name has been replaced, so key of dataset weight dict need updated.
         :return: None10 Minutes to cuDF and Dask-cuDF
@@ -341,9 +416,14 @@ class PlaintextDataset(BaseDataset):
                 dataset_weight = {}
                 for target_name, weight_dict in self.__dataset_weight_dict.items():
                     if target_name not in target_names:
-                        raise ValueError(
-                            "Weight dict target_name: {} is not in target names: {}.".format(
-                                target_name, target_names))
+                        message = "Weight dict target_name: {} is not in target names: {}.".format(
+                                    target_name, target_names)
+                        self.__callback_func(type_name="entity_configure",
+                                             object_name="dataset",
+                                             success_flag=False,
+                                             message=message)
+                        raise ValueError(message)
+
                     weight_col = [weight_dict[item] for item in target[target_name].values]
                     dataset_weight[target_name] = weight_col
 
@@ -355,11 +435,27 @@ class PlaintextDataset(BaseDataset):
                 self._bunch.dataset_weight = pd.DataFrame(dataset_weight)
 
     def load_csv(self):
-        data = reduce_data(data_path=self._data_path,
-                           column_name_flag=self._column_name_flag)
+        if not isinstance(self._column_name_flag, bool):
+            message = "Column name flag should be type of bool."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
+
+        if self._column_name_flag:
+            data = pd.read_csv(self._data_path, parse_dates=True, keep_date_col=True, header=0)
+        else:
+            data = pd.read_csv(self._data_path, parse_dates=True, keep_date_col=True, header=None)
+
         if self._name == ConstantValues.train_dataset:
             if bool(self._weight_column_names) and bool(self.__dataset_weight_dict):
-                raise ValueError("Just one weight setting can be set.")
+                message = "Just one weight setting can be set."
+                self.__callback_func(type_name="entity_configure",
+                                     object_name="dataset",
+                                     success_flag=False,
+                                     message=message)
+                raise ValueError(message)
 
         if self._column_name_flag:
             columns = list(data.columns)
@@ -373,8 +469,12 @@ class PlaintextDataset(BaseDataset):
                 if self._weight_column_names:
                     for weight_name in self._weight_column_names:
                         if weight_name not in data.columns:
-                            raise ValueError(
-                                "Column: {} doesn't exist in dataset file.".format(self._weight_column_names))
+                            message = "Column: {} doesn't exist in dataset file.".format(self._weight_column_names)
+                            self.__callback_func(type_name="entity_configure",
+                                                 object_name="dataset",
+                                                 success_flag=False,
+                                                 message=message)
+                            raise ValueError(message)
 
                     weight_index = []
                     for item in self._weight_column_names:
@@ -382,8 +482,6 @@ class PlaintextDataset(BaseDataset):
                     self.__weight_index = weight_index
                     weight = data[self._weight_column_names]
                     data.drop(self._weight_column_names, axis=1, inplace=True)
-                    print(data)
-                    assert 1 == 0
                 else:
                     weight = None
             else:
@@ -418,8 +516,9 @@ class PlaintextDataset(BaseDataset):
 
             if self.__dataset_weight_dict:
                 for index in self.__dataset_weight_dict.copy().keys():
-                    self.__dataset_weight_dict[self.__column_index[index]] = self.__dataset_weight_dict[index]
-                    self.__dataset_weight_dict.pop(index)
+                    if index != self.__column_index[index]:
+                        self.__dataset_weight_dict[self.__column_index[index]] = self.__dataset_weight_dict[index]
+                        self.__dataset_weight_dict.pop(index)
 
             if self._name in [ConstantValues.train_dataset,
                               ConstantValues.val_dataset,
@@ -439,8 +538,7 @@ class PlaintextDataset(BaseDataset):
 
                 if weight is not None:
                     for index, weight_name in enumerate(weight.columns):
-                        weight.rename(columns={weight_name: target_names[index]},
-                                      inplace=True)
+                        weight = weight.rename(columns={weight_name: target_names[index]})
 
                 if self.__dataset_weight_dict:
                     for weight_index in self.__dataset_weight_dict.copy().keys():
@@ -449,8 +547,13 @@ class PlaintextDataset(BaseDataset):
                                 weight_index]
                             self.__dataset_weight_dict.pop(weight_index)
                         else:
-                            raise IndexError("Weight index: {} is not consistent with target index: {}.".format(
-                                weight_index, target_columns))
+                            message = "Weight index: {} is not consistent with target index: {}.".format(
+                                        weight_index, target_columns)
+                            self.__callback_func(type_name="entity_configure",
+                                                 object_name="dataset",
+                                                 success_flag=False,
+                                                 message=message)
+                            raise IndexError(message)
 
                 target.columns = target_names
             else:
@@ -462,18 +565,34 @@ class PlaintextDataset(BaseDataset):
         return data, target, feature_names, target_names, weight
 
     def load_libsvm(self):
-        data, target = load_svmlight_file(self._data_path)
-        data = pd.DataFrame(data.toarray())
-        target = pd.DataFrame(target)
         if self._name == ConstantValues.train_dataset:
             if bool(self._weight_column_names) and bool(self.__dataset_weight_dict):
-                raise ValueError("Just one weight setting can be set.")
+                message = "Just one weight setting can be set."
+                self.__callback_func(type_name="entity_configure",
+                                     object_name="dataset",
+                                     success_flag=False,
+                                     message=message)
+                raise ValueError(message)
 
         if self._target_names is not None:
-            raise ValueError("Value: target names should be None when loading libsvm file.")
+            message = "Value: target names should be None when loading libsvm file."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
+
+        data, target = load_svmlight_file(self._data_path, multilabel=True)
+        data = pd.DataFrame(data.toarray())
+        target = pd.DataFrame(target)
 
         if self._column_name_flag:
-            raise ValueError("Value: column name flag should be false when loading libsvm file.")
+            message = "Value: column name flag should be false when loading libsvm file."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
         else:
             target_columns = list(target.columns)
             self.__column_index = list(data.columns)
@@ -493,8 +612,9 @@ class PlaintextDataset(BaseDataset):
 
             if self.__dataset_weight_dict:
                 for index in self.__dataset_weight_dict.copy().keys():
-                    self.__dataset_weight_dict[self.__column_index[index]] = self.__dataset_weight_dict[index]
-                    self.__dataset_weight_dict.pop(index)
+                    if index != self.__column_index[index]:
+                        self.__dataset_weight_dict[target_columns[index]] = self.__dataset_weight_dict[index]
+                        self.__dataset_weight_dict.pop(index)
 
             if self._name in [ConstantValues.train_dataset,
                               ConstantValues.val_dataset,
@@ -515,8 +635,13 @@ class PlaintextDataset(BaseDataset):
                                 weight_index]
                             self.__dataset_weight_dict.pop(weight_index)
                         else:
-                            raise IndexError("Weight index: {} is not consistent with target index: {}.".format(
-                                weight_index, target_columns))
+                            message = "Weight index: {} is not consistent with target index: {}.".format(
+                                weight_index, target_columns)
+                            self.__callback_func(type_name="entity_configure",
+                                                 object_name="dataset",
+                                                 success_flag=False,
+                                                 message=message)
+                            raise IndexError(message)
 
                 target.columns = target_names
             else:
@@ -525,11 +650,17 @@ class PlaintextDataset(BaseDataset):
 
             feature_names = ["feature_" + str(index) for index, _ in enumerate(data)]
             data.columns = feature_names
+        reduce_data(dataframe=data)
         return data, target, feature_names, target_names, weight
 
     def load_txt(self):
         if self._column_name_flag is True:
-            raise ValueError("Value: column name flag should be false when loading txt file.")
+            message = "Value: column name flag should be false when loading txt file."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         with open(self._data_path, 'r') as file:
             lines = file.readlines()
@@ -546,9 +677,7 @@ class PlaintextDataset(BaseDataset):
                 data.append(data_index)
 
             data = pd.DataFrame(np.asarray(data, dtype=str))
-            self.__column_index = list(data.columns)
-
-            target_columns = []
+            data.replace(to_replace="", value=None, inplace=True)
             self.__column_index = list(data.columns)
 
             if self.__use_weight_flag:
@@ -566,9 +695,11 @@ class PlaintextDataset(BaseDataset):
 
             if self.__dataset_weight_dict:
                 for index in self.__dataset_weight_dict.copy().keys():
-                    self.__dataset_weight_dict[self.__column_index[index]] = self.__dataset_weight_dict[index]
-                    self.__dataset_weight_dict.pop(index)
+                    if index != self.__column_index[index]:
+                        self.__dataset_weight_dict[self.__column_index[index]] = self.__dataset_weight_dict[index]
+                        self.__dataset_weight_dict.pop(index)
 
+            target_columns = []
             if self._name in [ConstantValues.train_dataset,
                               ConstantValues.val_dataset,
                               ConstantValues.increment_dataset]:
@@ -597,8 +728,13 @@ class PlaintextDataset(BaseDataset):
                                 weight_index]
                             self.__dataset_weight_dict.pop(weight_index)
                         else:
-                            raise IndexError("Weight index: {} is not consistent with target index: {}.".format(
-                                weight_index, target_columns))
+                            message = "Weight index: {} is not consistent with target index: {}.".format(
+                                weight_index, target_columns)
+                            self.__callback_func(type_name="entity_configure",
+                                                 object_name="dataset",
+                                                 success_flag=False,
+                                                 message=message)
+                            raise IndexError(message)
 
                 target.columns = target_names
             else:
@@ -607,6 +743,7 @@ class PlaintextDataset(BaseDataset):
 
             feature_names = ["feature_" + str(index) for index, _ in enumerate(data)]
             data.columns = feature_names
+        reduce_data(dataframe=data)
         return data, target, feature_names, target_names, weight
 
     def wc_count(self):
@@ -637,7 +774,7 @@ class PlaintextDataset(BaseDataset):
     # dataset is a PlainDataset object
     def union(self, val_dataset: PlaintextDataset):
         """ This method is used for concatenating train dataset and validation dataset.Merge train set and
-        validation set in vertical, this procedure will operated on train set.
+        validation set in vertical, this procedure will operate on train set.
         example:
             trainSet = PlaintextDataset(...)
             validationSet = trainSet.split()
@@ -647,7 +784,12 @@ class PlaintextDataset(BaseDataset):
         """
         self._val_start = self._bunch.target.shape[0]
         if self._bunch.data.shape[1] != val_dataset.get_dataset().data.shape[1]:
-            raise ValueError("Shape of train dataset is not consistent with shape of validation dataset.")
+            message = "Shape of train dataset is not consistent with shape of validation dataset."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="dataset",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         self._bunch.data = pd.concat([self._bunch.data, val_dataset.get_dataset().data], axis=0)
 
@@ -656,7 +798,14 @@ class PlaintextDataset(BaseDataset):
 
         if self._bunch.dataset_weight is not None:
             assert isinstance(self._bunch.dataset_weight, (pd.DataFrame, pd.Series))
-            assert self._bunch.dataset_weight.shape[1] == val_dataset.get_dataset().dataset_weight.shape[1]
+            if not self._bunch.dataset_weight.shape[1] == val_dataset.get_dataset().dataset_weight.shape[1]:
+                message = "Weight shape of train dataset is not same with validation dataset's."
+                self.__callback_func(type_name="entity_configure",
+                                     object_name="dataset",
+                                     success_flag=False,
+                                     message=message)
+                raise ValueError(message)
+
             self._bunch.dataset_weight = pd.concat([self._bunch.dataset_weight,
                                                     val_dataset.get_dataset().dataset_weight], axis=0)
             self._bunch.dataset_weight = self._bunch.dataset_weight.reset_index(drop=True)
@@ -666,11 +815,23 @@ class PlaintextDataset(BaseDataset):
 
         if self._bunch.get("feature_names") is not None and val_dataset.get_dataset().get("feature_names") is not None:
             for item in self._bunch.feature_names:
-                assert item in val_dataset.get_dataset().feature_names
+                if item not in val_dataset.get_dataset().feature_names:
+                    message = "Column name: {} is not in feature names.".format(item)
+                    self.__callback_func(type_name="entity_configure",
+                                         object_name="dataset",
+                                         success_flag=False,
+                                         message=message)
+                    raise ValueError(message)
 
         if self._bunch.get("target_names") is not None and val_dataset.get_dataset().get("target_names") is not None:
             for item in self._bunch.target_names:
-                assert item in val_dataset.get_dataset().target_names
+                if item not in val_dataset.get_dataset().target_names:
+                    message = "Target name: {} is not in target names.".format(item)
+                    self.__callback_func(type_name="entity_configure",
+                                         object_name="dataset",
+                                         success_flag=False,
+                                         message=message)
+                    raise ValueError(message)
 
     def split(self, val_start: float = 0.8):
         """split a validation set from train set.
@@ -734,7 +895,8 @@ class PlaintextDataset(BaseDataset):
                                 use_weight_flag=self.__use_weight_flag,
                                 weight_column_name=self._weight_column_names,
                                 dataset_weight_dict=self.__dataset_weight_dict,
-                                data_package=data_package)
+                                data_package=data_package,
+                                callback_func=self.__callback_func)
 
     @property
     def need_data_clear(self):

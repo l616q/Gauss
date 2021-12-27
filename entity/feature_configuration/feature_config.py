@@ -9,16 +9,20 @@ import yaml
 
 from entity.entity import Entity
 from utils.bunch import Bunch
+from utils.constant_values import ConstantValues
 from utils.yaml_exec import yaml_read
 from utils.yaml_exec import yaml_write
+from utils.exception import GeneralEntityException
 
 
 class FeatureItemConf(object):
     def __init__(self, name: str = None, index: int = None, size=1, dtype=None,
                  default_value=None, ftype=None, used=None):
-
-        assert dtype in (None, "int64", "float64", "string")
-        assert ftype in (None, "numerical", "category", "bool", "datetime")
+        try:
+            assert dtype in (None, "int64", "float64", "string")
+            assert ftype in (None, "numerical", "category", "bool", "datetime")
+        except AssertionError:
+            raise GeneralEntityException("Type of a item feature is illegal.")
 
         self._name = name
         self._dtype = dtype
@@ -93,9 +97,17 @@ class FeatureConf(Entity):
             name=params["name"],
         )
 
+        self.__callback_func = params[ConstantValues.callback_func]
+
         # yaml file path
         self._file_path = params.get("file_path")
         self._feature_dict = Bunch()
+
+        message = "Creat feature conf object successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="feature_conf",
+                             success_flag=True,
+                             message=message)
 
     def __repr__(self):
         pass
@@ -121,7 +133,12 @@ class FeatureConf(Entity):
                     or len(list(set(init_conf['transforms']['numerical_features']))) != len(init_conf['transforms']['numerical_features'])\
                     or len(list(set(init_conf['transforms']['bool_features']))) != len(init_conf['transforms']['bool_features']):
 
-                raise ValueError("Duplicate keys in transformers.")
+                message = "Duplicate keys in transformers."
+                self.__callback_func(type_name="entity_configure",
+                                     object_name="feature_conf",
+                                     success_flag=False,
+                                     message=message)
+                raise ValueError(message)
 
             if init_conf['transforms']['categorical_features'] is not None:
                 for item in init_conf['transforms']['categorical_features']:
@@ -171,7 +188,13 @@ class FeatureConf(Entity):
                                                  used=feature_item["used"])
 
                 self._feature_dict[key] = item_configure
-            return self
+
+        message = "parse feature configure file successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="feature_conf",
+                             success_flag=True,
+                             message=message)
+        return self
 
     def add_item_type(self, column_name: str, feature_item_conf: FeatureItemConf):
         self._feature_dict[column_name] = feature_item_conf
@@ -196,25 +219,59 @@ class FeatureConf(Entity):
             features[item_conf.name] = item_dict
         yaml_write(yaml_dict=features, yaml_file=save_path)
 
+        message = "Write feature configure object successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="feature_conf",
+                             success_flag=True,
+                             message=message)
+
     def feature_select(self, feature_list=None, use_index_flag=None):
         if feature_list is None:
             for feature in self._feature_dict.keys():
                 self._feature_dict[feature].used = True
             return
 
-        assert isinstance(use_index_flag, bool)
+        if not isinstance(use_index_flag, bool):
+            message = "Value: use index flag should type of bool, but get {} instead.".format(
+                use_index_flag)
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="feature_conf",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
+
         if use_index_flag is True:
             for feature in self._feature_dict.keys():
                 if self._feature_dict[feature].index not in feature_list:
                     self._feature_dict[feature].used = False
                 else:
-                    assert self._feature_dict[feature].used is True
+                    if self._feature_dict[feature].used is not True:
+                        message = "Value: used in feature: {} should be true, but get {} instead.".format(
+                            feature, self._feature_dict[feature].used)
+                        self.__callback_func(type_name="entity_configure",
+                                             object_name="feature_conf",
+                                             success_flag=False,
+                                             message=message)
+                        raise ValueError(message)
         else:
             for feature in self._feature_dict.keys():
                 if self._feature_dict[feature].name not in feature_list:
                     self._feature_dict[feature].used = False
                 else:
-                    assert self._feature_dict[feature].used is True
+                    if self._feature_dict[feature].used is not True:
+                        message = "Value: used in feature: {} should be true, but get {} instead.".format(
+                            feature, self._feature_dict[feature].used)
+                        self.__callback_func(type_name="entity_configure",
+                                             object_name="feature_conf",
+                                             success_flag=False,
+                                             message=message)
+                        raise ValueError(message)
+
+        message = "Select features successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="feature_conf",
+                             success_flag=True,
+                             message=message)
 
     @property
     def file_path(self):
@@ -222,5 +279,12 @@ class FeatureConf(Entity):
 
     @file_path.setter
     def file_path(self, file_path):
-        assert os.path.isfile(file_path)
+        if not os.path.isfile(file_path):
+            message = "File path: ``{}`` doesn't exist.".format(file_path)
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="feature_conf",
+                                 success_flag=False,
+                                 message=message)
+            raise IOError(message)
+
         self._file_path = file_path

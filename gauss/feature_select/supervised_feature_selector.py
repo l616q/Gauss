@@ -47,17 +47,17 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
         :param selector_config_path: root path of supervised selector configure files
         :param metrics_name: Construct BaseMetric object by entity factory.
         """
-
         super().__init__(
             name=params[ConstantValues.name],
             train_flag=params[ConstantValues.train_flag],
             enable=params[ConstantValues.enable],
             task_name=params[ConstantValues.task_name],
-            feature_configure_path=params[ConstantValues.feature_configure_path]
+            source_file_path=params[ConstantValues.source_file_path],
+            final_file_path=params[ConstantValues.final_file_path]
         )
 
+        self.__callback_func = params[ConstantValues.callback_func]
         self._selector_config_path = params[ConstantValues.selector_configure_path]
-        self._final_file_path = params[ConstantValues.final_file_path]
 
         self._optimize_mode = None
 
@@ -181,9 +181,14 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
         model_tuner.automl_final_set = False
 
         model = entity["model"]
-        assert isinstance(model, ModelWrapper), \
-            "Object: model should be type ModelWrapper, but get {} instead.".format(
+        if not isinstance(model, ModelWrapper):
+            message = "Object: model should be type ModelWrapper, but get {} instead.".format(
                 type(model))
+            self.__callback_func(type_name="component_configure",
+                                 object_name="supervised_feature_selector",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         selector_tuner = HyperoptTuner(
             algorithm_name="tpe",
@@ -228,7 +233,7 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
                 )
 
                 receive_params = selector_tuner.generate_parameters(trial)
-                # feature selector hyper-parameters
+                # feature selector hyperparameters
                 parameters.update(receive_params)
 
                 if model_name == "GBDTSelector":
@@ -260,7 +265,7 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
                         get_current_memory_gb()["memory_usage"]
                     )
                 )
-                feature_configure.file_path = self._feature_configure_path
+                feature_configure.file_path = self._source_file_path
 
                 feature_configure.parse(method="system")
                 feature_configure.feature_select(feature_list=feature_list,
@@ -304,11 +309,27 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
         self._final_feature_names = model.feature_list
         self.final_configure_generation()
 
+        message = "Supervised feature selector executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="supervised_feature_selector",
+                             success_flag=True,
+                             message=message)
+
     def _increment_run(self, **entity):
-        raise RuntimeError("Class: SupervisedFeatureSelector has no increment function.")
+        message = "Class: SupervisedFeatureSelector has no increment function."
+        self.__callback_func(type_name="component_configure",
+                             object_name="supervised_feature_selector",
+                             success_flag=False,
+                             message=message)
+        raise RuntimeError(message)
 
     def _predict_run(self, **entity):
-        raise RuntimeError("Class: SupervisedFeatureSelector has no predict function.")
+        message = "Class: SupervisedFeatureSelector has no predict function."
+        self.__callback_func(type_name="component_configure",
+                             object_name="supervised_feature_selector",
+                             success_flag=False,
+                             message=message)
+        raise RuntimeError(message)
 
     @property
     def optimal_metric(self):
@@ -323,7 +344,7 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
         Write configure file
         :return:
         """
-        feature_conf = yaml_read(yaml_file=self._feature_configure_path)
+        feature_conf = yaml_read(yaml_file=self._source_file_path)
         logger.info("final_feature_names: %s", str(self._final_feature_names))
         for item in feature_conf.keys():
             if item not in self._final_feature_names:
@@ -460,7 +481,7 @@ class SupervisedFeatureSelector(BaseFeatureSelector):
         """
         check dataset and remove irregular columns,
         if there is existing at least a features containing
-        np.nan, np.inf or -np.inf, this method will return False.
+        np. Nan, np.inf or -np.inf, this method will return False.
         :param dataframe
         :return: bool
         """

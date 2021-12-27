@@ -8,6 +8,7 @@ Authors: citic-lab
 class ConstantValues:
     # system name
     name = "name"
+    callback_func = "callback_func"
     train_flag = "train_flag"
     increment_flag = "increment_flag"
     enable = "enable"
@@ -127,6 +128,7 @@ class ConstantValues:
     pre_feature_configure_path = "pre_feature_configure_path"
     target_feature_configure_path = "target_feature_configure_path"
     out_put_path = "out_put_path"
+    success_file_path = "success_file_path"
     # pipeline name
     PreprocessRoute = "PreprocessRoute"
     CoreRoute = "CoreRoute"
@@ -139,3 +141,4 @@ class ConstantValues:
     model_save = "model_save"
     # configure dict name
     final_feature_configure = "final_feature_configure"
+    report_configure = "report_configure"

@@ -54,24 +54,22 @@ class GaussLightgbm(ModelWrapper):
             super().__init__(
                 name=params[ConstantValues.name],
                 model_root_path=params[ConstantValues.model_root_path],
-                init_model_root=params[ConstantValues.init_model_root],
                 task_name=params[ConstantValues.task_name],
                 train_flag=params[ConstantValues.train_flag],
-                decay_rate=params[ConstantValues.decay_rate],
-                metric_eval_used_flag=params[ConstantValues.metric_eval_used_flag]
+                decay_rate=params[ConstantValues.decay_rate]
             )
         else:
             assert params[ConstantValues.train_flag] == ConstantValues.inference
             super().__init__(
                 name=params[ConstantValues.name],
                 model_root_path=params[ConstantValues.model_root_path],
-                init_model_root=params[ConstantValues.init_model_root],
                 increment_flag=params[ConstantValues.increment_flag],
                 infer_result_type=params[ConstantValues.infer_result_type],
                 task_name=params[ConstantValues.task_name],
-                train_flag=params[ConstantValues.train_flag],
-                metric_eval_used_flag=params[ConstantValues.metric_eval_used_flag]
+                train_flag=params[ConstantValues.train_flag]
             )
+
+        self.__callback_func = params[ConstantValues.callback_func]
 
         self._model_file_name = self._name + ".txt"
         self._model_config_file_name = self._name + ".yaml"
@@ -81,6 +79,12 @@ class GaussLightgbm(ModelWrapper):
         self._eval_function = None
 
         self.count = 0
+
+        message = "Creating lightgbm model successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="model",
+                             success_flag=True,
+                             message=message)
 
     def __repr__(self):
         pass
@@ -132,57 +136,29 @@ class GaussLightgbm(ModelWrapper):
     def _initialize_model(self):
         pass
 
-    def _binary_train(self,
-                      train_dataset: BaseDataset,
-                      val_dataset: BaseDataset,
-                      **entity):
-        """
-        This method is used to train lightgbm
-        model in binary classification.
-        :param train_dataset:
-        :param val_dataset:
-        :param entity:
-        :return: None
-        """
-        assert self._train_flag == ConstantValues.train
-        assert self._task_name == ConstantValues.binary_classification
+    def __core_train(self,
+                     train_dataset: BaseDataset,
+                     val_dataset: BaseDataset,
+                     **entity):
+        params = self._model_params
 
-        init_model_path = os.path.join(self._init_model_path, self._model_file_name)
-        if init_model_path:
+        # generate init model path for training.
+        if self._init_model_path:
+            init_model_path = os.path.join(self._init_model_path, self._model_file_name)
             assert os.path.isfile(init_model_path), \
                 "Value: init_model_path({}) is not a valid model path.".format(
                     init_model_path)
+        else:
+            init_model_path = None
 
-        params = self._model_params
-        params["objective"] = "binary"
-
+        # generate user-defined loss function object.
         if entity["loss"] is not None:
             self._loss_function = entity["loss"].loss_fn
             obj_function = self._loss_func
         else:
             obj_function = None
 
-        train_target_names = train_dataset.get_dataset().target_names
-        eval_target_names = val_dataset.get_dataset().target_names
-
-        assert operator.eq(train_target_names, eval_target_names), \
-            "Value: target_names is different between train_dataset and validation dataset."
-
-        # One label learning is achieved now, multi_label
-        # learning will be supported in future.
-        self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
-
-        train_label_set = pd.unique(train_dataset.get_dataset().target[self._target_names])
-        eval_label_set = pd.unique(val_dataset.get_dataset().target[self._target_names])
-        train_label_num = len(train_label_set)
-        eval_label_num = len(eval_label_set)
-
-        assert train_label_num == eval_label_num and train_label_num == 2, \
-            "Set of train label is: {}, length: {}, validation label is {}, length is {}, " \
-            "and binary classification can not be used.".format(
-                train_label_set, train_label_num, eval_label_set, eval_label_num
-            )
-
+        # generate user-defined metric function object.
         if self._metric_eval_used_flag and entity["metric"] is not None:
             entity["metric"].label_name = self._target_names
             self._eval_function = entity["metric"].evaluate
@@ -191,13 +167,7 @@ class GaussLightgbm(ModelWrapper):
             params["metric"] = "binary_logloss"
             eval_function = None
 
-        logger.info(
-            "Construct lightgbm training dataset, "
-            "with current memory usage: {:.2f} GiB".format(
-                get_current_memory_gb()["memory_usage"]
-            )
-        )
-
+        # loading dataset
         lgb_entity = self.__lgb_preprocessing(
             **Bunch(
                 label_name=self._target_names,
@@ -213,13 +183,6 @@ class GaussLightgbm(ModelWrapper):
 
         lgb_train = lgb_entity.lgb_train
         lgb_eval = lgb_entity.lgb_eval
-
-        logger.info(
-            "Set preprocessing parameters for lightgbm, "
-            "with current memory usage: {:.2f} GiB".format(
-                get_current_memory_gb()["memory_usage"]
-            )
-        )
 
         if self._model_params is not None:
 
@@ -266,23 +229,23 @@ class GaussLightgbm(ModelWrapper):
             raise ValueError("Model parameters is None.")
         self.count += 1
 
-    def _multiclass_train(self,
-                          train_dataset: BaseDataset,
-                          val_dataset: BaseDataset,
-                          **entity):
+    def _binary_train(self,
+                      train_dataset: BaseDataset,
+                      val_dataset: BaseDataset,
+                      **entity):
+        """
+        This method is used to train lightgbm
+        model in binary classification.
+        param train_dataset:
+        :param val_dataset:
+        :param entity:
+        :return: None
+        """
         assert self._train_flag == ConstantValues.train
-        assert self._task_name == ConstantValues.multiclass_classification
-
-        init_model_path = os.path.join(self._init_model_path, self._model_file_name)
+        assert self._task_name == ConstantValues.binary_classification
 
         params = self._model_params
-        params["objective"] = "multiclass"
-
-        if entity["loss"] is not None:
-            self._loss_function = entity["loss"].loss_fn
-            obj_function = self._loss_func
-        else:
-            obj_function = None
+        params["objective"] = "binary"
 
         train_target_names = train_dataset.get_dataset().target_names
         eval_target_names = val_dataset.get_dataset().target_names
@@ -291,7 +254,54 @@ class GaussLightgbm(ModelWrapper):
             "Value: target_names is different between train_dataset and validation dataset."
 
         # One label learning is achieved now, multi_label
-        # learning will be supported in future.
+        # learning will be supported in the future.
+        self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
+
+        train_label_set = pd.unique(train_dataset.get_dataset().target[self._target_names])
+        eval_label_set = pd.unique(val_dataset.get_dataset().target[self._target_names])
+        train_label_num = len(train_label_set)
+        eval_label_num = len(eval_label_set)
+
+        assert train_label_num == eval_label_num and train_label_num == 2, \
+            "Set of train label is: {}, length: {}, validation label is {}, length is {}, " \
+            "and binary classification can not be used.".format(
+                train_label_set, train_label_num, eval_label_set, eval_label_num
+            )
+
+        logger.info(
+            "Construct lightgbm training dataset, "
+            "with current memory usage: {:.2f} GiB".format(
+                get_current_memory_gb()["memory_usage"]
+            )
+        )
+
+        logger.info(
+            "Set preprocessing parameters for lightgbm, "
+            "with current memory usage: {:.2f} GiB".format(
+                get_current_memory_gb()["memory_usage"]
+            )
+        )
+
+        self.__core_train(train_dataset, val_dataset, **entity)
+
+    def _multiclass_train(self,
+                          train_dataset: BaseDataset,
+                          val_dataset: BaseDataset,
+                          **entity):
+        assert self._train_flag == ConstantValues.train
+        assert self._task_name == ConstantValues.multiclass_classification
+
+        params = self._model_params
+        params["objective"] = "multiclass"
+
+        train_target_names = train_dataset.get_dataset().target_names
+        eval_target_names = val_dataset.get_dataset().target_names
+
+        assert operator.eq(train_target_names, eval_target_names), \
+            "Value: target_names is different between train_dataset and validation dataset."
+
+        # One label learning is achieved now, multi_label
+        # learning will be supported in the future.
         self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
 
         train_label_set = pd.unique(train_dataset.get_dataset().target[self._target_names])
@@ -307,36 +317,12 @@ class GaussLightgbm(ModelWrapper):
                 train_label_set, train_label_num, eval_label_set, eval_label_num
             )
 
-        if self._metric_eval_used_flag and entity["metric"] is not None:
-            entity["metric"].label_name = self._target_names
-            self._eval_function = entity["metric"].evaluate
-            eval_function = self._eval_func
-        else:
-            params["metric"] = "multi_logloss"
-            eval_function = None
-
         logger.info(
             "Construct lightgbm training dataset, "
             "with current memory usage: {:.2f} GiB".format(
                 get_current_memory_gb()["memory_usage"]
             )
         )
-
-        lgb_entity = self.__lgb_preprocessing(
-            **Bunch(
-                label_name=self._target_names,
-                train_dataset=train_dataset,
-                val_dataset=val_dataset,
-                check_bunch=self._check_bunch,
-                feature_list=self._feature_list,
-                categorical_list=self._categorical_list,
-                train_flag=self._train_flag,
-                task_name=self._task_name
-            )
-        )
-
-        lgb_train = lgb_entity.lgb_train
-        lgb_eval = lgb_entity.lgb_eval
 
         logger.info(
             "Set preprocessing parameters for lightgbm, "
@@ -345,51 +331,7 @@ class GaussLightgbm(ModelWrapper):
             )
         )
 
-        if self._model_params is not None:
-            self._model_config = {
-                "Name": self.name,
-                "Normalization": False,
-                "Standardization": False,
-                "OnehotEncoding": False,
-                "ModelParameters": self._model_params
-            }
-
-            logger.info(
-                "Training lightgbm model with params: {}".format(params)
-            )
-            logger.info(
-                "Start training lightgbm model, "
-                "with current memory usage: {:.2f} GiB".format(
-                    get_current_memory_gb()["memory_usage"]
-                )
-            )
-
-            num_boost_round = params.pop("num_boost_round")
-            early_stopping_rounds = params.pop("early_stopping_rounds")
-
-            self._model = lgb.train(
-                params=params,
-                train_set=lgb_train,
-                init_model=init_model_path,
-                num_boost_round=num_boost_round,
-                valid_sets=lgb_eval,
-                categorical_feature=self._categorical_list,
-                early_stopping_rounds=early_stopping_rounds,
-                fobj=obj_function,
-                feval=eval_function,
-                verbose_eval=False,
-            )
-
-            logger.info(
-                "Training lightgbm model finished, "
-                "with current memory usage: {:.2f} GiB".format(
-                    get_current_memory_gb()["memory_usage"]
-                )
-            )
-
-        else:
-            raise ValueError("Model parameters is None.")
-        self.count += 1
+        self.__core_train(train_dataset, val_dataset, **entity)
 
     def _regression_train(self,
                           train_dataset: BaseDataset,
@@ -398,16 +340,8 @@ class GaussLightgbm(ModelWrapper):
         assert self._task_name == ConstantValues.regression
         assert self._train_flag == ConstantValues.train
 
-        init_model_path = os.path.join(self._init_model_path, self._model_file_name)
-
         params = self._model_params
         params["objective"] = "regression"
-
-        if entity["loss"] is not None:
-            self._loss_function = entity["loss"].loss_fn
-            obj_function = self._loss_func
-        else:
-            obj_function = None
 
         train_target_names = train_dataset.get_dataset().target_names
         eval_target_names = val_dataset.get_dataset().target_names
@@ -417,14 +351,6 @@ class GaussLightgbm(ModelWrapper):
 
         self._target_names = list(set(train_target_names).union(set(eval_target_names)))[0]
 
-        if self._metric_eval_used_flag and entity["metric"] is not None:
-            entity["metric"].label_name = self._target_names
-            self._eval_function = entity["metric"].evaluate
-            eval_function = self._eval_func
-        else:
-            params["metric"] = "mse"
-            eval_function = None
-
         logger.info(
             "Construct lightgbm training dataset, "
             "with current memory usage: {:.2f} GiB".format(
@@ -432,75 +358,13 @@ class GaussLightgbm(ModelWrapper):
             )
         )
 
-        lgb_entity = self.__lgb_preprocessing(
-            **Bunch(
-                label_name=self._target_names,
-                train_dataset=train_dataset,
-                val_dataset=val_dataset,
-                check_bunch=self._check_bunch,
-                feature_list=self._feature_list,
-                categorical_list=self._categorical_list,
-                train_flag=self._train_flag,
-                task_name=self._task_name
-            )
-        )
-
-        lgb_train = lgb_entity.lgb_train
-        lgb_eval = lgb_entity.lgb_eval
-
         logger.info(
             "Set preprocessing parameters for lightgbm, "
             "with current memory usage: {:.2f} GiB".format(
                 get_current_memory_gb()["memory_usage"]
             )
         )
-
-        if self._model_params is not None:
-
-            self._model_config = {
-                "Name": self.name,
-                "Normalization": False,
-                "Standardization": False,
-                "OnehotEncoding": False,
-                "ModelParameters": self._model_params
-            }
-
-            logger.info(
-                "Start training lightgbm model, "
-                "with current memory usage: {:.2f} GiB".format(
-                    get_current_memory_gb()["memory_usage"]
-                )
-            )
-
-            num_boost_round = params.pop("num_boost_round")
-            early_stopping_rounds = params.pop("early_stopping_rounds")
-
-            self._model = lgb.train(
-                params=params,
-                train_set=lgb_train,
-                init_model=init_model_path,
-                num_boost_round=num_boost_round,
-                valid_sets=lgb_eval,
-                categorical_feature=self._categorical_list,
-                early_stopping_rounds=early_stopping_rounds,
-                fobj=obj_function,
-                feval=eval_function,
-                verbose_eval=False,
-            )
-
-            params["num_boost_round"] = num_boost_round
-            params["early_stopping_rounds"] = early_stopping_rounds
-
-            logger.info(
-                "Training lightgbm model finished, "
-                "with current memory usage: {:.2f} GiB".format(
-                    get_current_memory_gb()["memory_usage"]
-                )
-            )
-
-        else:
-            raise ValueError("Model parameters is None.")
-        self.count += 1
+        self.__core_train(train_dataset, val_dataset, **entity)
 
     def _binary_increment(self, train_dataset: BaseDataset, **entity):
         """
@@ -543,12 +407,6 @@ class GaussLightgbm(ModelWrapper):
         :param train_dataset: new boosting train dataset.
         :return: None
         """
-        """
-        This method is used to train lightgbm (booster)
-        model in binary classification.
-        :param train_dataset: new boosting train dataset.
-        :return: None
-        """
         decay_rate = self._decay_rate
         init_model_path = os.path.join(self._model_save_root, self._model_file_name)
         assert os.path.isfile(init_model_path)
@@ -581,12 +439,6 @@ class GaussLightgbm(ModelWrapper):
         """
         This method is used to train lightgbm (booster)
         model in regression.
-        :param train_dataset: new boosting train dataset.
-        :return: None
-        """
-        """
-        This method is used to train lightgbm (booster)
-        model in binary classification.
         :param train_dataset: new boosting train dataset.
         :return: None
         """
@@ -743,6 +595,7 @@ class GaussLightgbm(ModelWrapper):
                 get_current_memory_gb()["memory_usage"]
             )
         )
+
         # 默认生成的为预测值的概率值，传入metric之后再处理.
         val_y_pred = self._model.predict(
             eval_data
@@ -819,6 +672,12 @@ class GaussLightgbm(ModelWrapper):
                        self._feature_config_file_name
                    )
                    )
+
+        message = "Save lightgbm model successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="model",
+                             success_flag=True,
+                             message=message)
 
     def _update_best(self):
         """

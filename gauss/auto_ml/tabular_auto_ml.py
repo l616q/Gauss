@@ -27,18 +27,21 @@ class TabularAutoML(BaseAutoML):
 
     def __init__(self, **params):
         """
-        :param name:
-        :param train_flag:
-        :param enable:
+        :param name: string object, component name.
+        :param train_flag: string object.
+        :param enable: bool object.
         :param opt_model_names: opt_model is a list object,
-        and can includes tpe, random_search, anneal and evolution.
+        and can include tpe, random_search, anneal and evolution.
         """
         super().__init__(
             name=params[ConstantValues.name],
             train_flag=params[ConstantValues.train_flag],
             enable=params[ConstantValues.enable],
             task_name=params[ConstantValues.task_name],
-            opt_model_names=params[ConstantValues.opt_model_names])
+            opt_model_names=params[ConstantValues.opt_model_names],
+            source_file_path=params[ConstantValues.source_file_path],
+            final_file_path=params[ConstantValues.final_file_path]
+        )
 
         assert params[ConstantValues.optimize_mode] in [ConstantValues.minimize,
                                                         ConstantValues.maximize]
@@ -227,7 +230,7 @@ class TabularAutoML(BaseAutoML):
     @property
     def local_best(self):
         """
-        Get best metric result of single trial in auto machine learning.
+        Get the best metric result of single trial in auto machine learning.
         :return: MetricResult
         """
         return self.__local_best

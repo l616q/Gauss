@@ -22,23 +22,53 @@ class MSELoss(BaseLoss):
         pass
 
     def __init__(self, **params):
-        assert "name" in params, "Key: name must be in params."
-        assert "label_name" in params, "Key: label_name must be in params"
+        self.__callback_func = params[ConstantValues.callback_func]
+
+        try:
+            assert "name" in params, "Key: name must be in params."
+            assert "label_name" in params, "Key: label_name must be in params"
+        except AssertionError:
+            message = "Parameters is not complete."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="loss",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         super(MSELoss, self).__init__(name=params["name"],
                                       task_name=ConstantValues.regression)
         self._label_name = params.get("label_name")
 
+        message = "Create MSELoss object successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="loss",
+                             success_flag=True,
+                             message=message)
+
     def loss_fn(self,
                 score: np.ndarray,
                 label: np.ndarray) -> LossResult:
 
-        assert len(label) and len(label) == len(score)
+        if not (len(label) and len(label) == len(score)):
+            message = "Shape of score is not different from label's."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="loss",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
+
         loss, grad, hess = self._mse_loss(score=score, label=label)
 
         loss_dict = {"loss": loss,
                      "grad": grad,
                      "hess": hess}
+
+        message = "Calculate MSELoss successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="loss",
+                             success_flag=True,
+                             message=message)
+
         return LossResult(name="loss_result", result=loss_dict)
 
     @classmethod
@@ -58,25 +88,58 @@ class BinaryLogLoss(BaseLoss):
         pass
 
     def __init__(self, **params):
-        assert "name" in params, "Key: name must be in params."
         super(BinaryLogLoss, self).__init__(name=params["name"],
                                             task_name=ConstantValues.binary_classification)
+
+        self.__callback_func = params[ConstantValues.callback_func]
+
+        try:
+            assert "name" in params, "Key: name must be in params."
+            assert "label_name" in params, "Key: label_name must be in params"
+        except AssertionError:
+            message = "Parameters is not complete."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="loss",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         self._label_name = params.get("label_name")
         self._task_name = ConstantValues.binary_classification
 
+        message = "Create BinaryLogloss object successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="loss",
+                             success_flag=True,
+                             message=message)
+
     def loss_fn(self,
                 score: np.ndarray,
                 label: np.ndarray) -> LossResult:
+
         assert score.ndim == 1, "Numpy array: score must be the shape: (n, )."
         assert label.ndim == 1, "Numpy array: label must be the shape: (n, )."
 
-        assert len(label) and len(label) == len(score)
+        if not (len(label) and len(label) == len(score)):
+            message = "Shape of score is not different from label's."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="loss",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
+
         loss, grad, hess = self._log_loss(score=score, label=label)
 
         loss_dict = {"loss": loss,
                      "grad": grad,
                      "hess": hess}
+
+        message = "Calculate BinaryLogLoss successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="loss",
+                             success_flag=True,
+                             message=message)
+
         return LossResult(name="loss_result", result=loss_dict)
 
     @classmethod

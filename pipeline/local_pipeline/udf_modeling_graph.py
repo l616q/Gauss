@@ -14,11 +14,11 @@ from pipeline.local_pipeline.core_chain import CoreRoute
 from pipeline.local_pipeline.preprocess_chain import PreprocessRoute
 from pipeline.local_pipeline.mapping import EnvironmentConfigure
 from pipeline.local_pipeline.base_modeling_graph import BaseModelingGraph
+from utils.bunch import Bunch
 
 from utils.check_dataset import check_data
 from utils.yaml_exec import yaml_write
 from utils.exception import PipeLineLogicError, NoResultReturnException
-from utils.Logger import logger
 from utils.constant_values import ConstantValues
 
 
@@ -71,7 +71,7 @@ class UdfModelingGraph(BaseModelingGraph):
             model_need_clear_flag=system_configure[ConstantValues.model_need_clear_flag],
             feature_configure_path=user_configure[ConstantValues.feature_configure_path],
             feature_configure_name=system_configure[ConstantValues.feature_configure_name],
-            dataset_name=user_configure[ConstantValues.dataset_name],
+            dataset_name=system_configure[ConstantValues.dataset_name],
             type_inference_name=system_configure[ConstantValues.type_inference_name],
             label_encoder_name=system_configure[ConstantValues.label_encoder_name],
             label_encoder_flag=system_configure[ConstantValues.label_encoder_flag],
@@ -135,8 +135,11 @@ class UdfModelingGraph(BaseModelingGraph):
                  self._component_names[ConstantValues.type_inference_name],
              ConstantValues.model_zoo: self._model_zoo
              }
+        self.__report_configure = None
 
     def _run_route(self, **params):
+        self.__init_report_configure()
+
         assert isinstance(self._flag_dict[ConstantValues.data_clear_flag], bool) and \
                isinstance(self._flag_dict[ConstantValues.feature_generator_flag], bool) and \
                isinstance(self._flag_dict[ConstantValues.unsupervised_feature_selector_flag], bool) and \
@@ -178,7 +181,11 @@ class UdfModelingGraph(BaseModelingGraph):
 
              ConstantValues.label_encoder_feature_path: join(
                  work_feature_root,
-                 feature_dict.label_encoder_feature)
+                 feature_dict.label_encoder_feature),
+
+             ConstantValues.success_file_path: join(
+                 dispatch_model_root,
+                 feature_dict.success_file_name)
              }
 
         work_model_root = join(
@@ -217,14 +224,36 @@ class UdfModelingGraph(BaseModelingGraph):
             feature_generator_name=self._component_names[ConstantValues.feature_generator_name],
             feature_generator_flag=self._flag_dict[ConstantValues.feature_generator_flag],
             unsupervised_feature_selector_name=self._component_names[ConstantValues.unsupervised_feature_selector_name],
-            unsupervised_feature_selector_flag=self._flag_dict[ConstantValues.unsupervised_feature_selector_flag]
+            unsupervised_feature_selector_flag=self._flag_dict[ConstantValues.unsupervised_feature_selector_flag],
+            report_configure=self.__report_configure
         )
 
         try:
             entity_dict = preprocess_chain.run()
-        except PipeLineLogicError as error:
-            logger.info(error)
-            return None
+        except PipeLineLogicError:
+            self.__report_configure.main_pipeline.info = "Error: pipeline logic error happens in preprocessing chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            return self.__report_configure
+        except (ValueError,
+                TypeError,
+                RuntimeError,
+                IndexError,
+                IOError,
+                BaseException):
+            report_configure = preprocess_chain.report_configure
+            self.__report_configure.update(report_configure)
+            self.__report_configure.main_pipeline.info = "General error happens in preprocessing chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            return self.__report_configure
+
+        report_configure = preprocess_chain.report_configure
+
+        if not isinstance(entity_dict, dict):
+            self.__report_configure.main_pipeline.info = "Get illegal type of entity dict in preprocessing chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            self.__report_configure.update(report_configure)
+            return self.__report_configure
+        self.__report_configure.update(report_configure)
 
         self._already_data_clear = preprocess_chain.already_data_clear
 
@@ -233,7 +262,10 @@ class UdfModelingGraph(BaseModelingGraph):
         model_name = (params.get(ConstantValues.model_name))
         if check_data(already_data_clear=self._already_data_clear,
                       model_need_clear_flag=self._model_need_clear_flag.get(model_name)) is not True:
-            return None
+            self.__report_configure.main_pipeline.info = "Get illegal type of entity dict in auto modeling chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            self.__report_configure.update(report_configure)
+            return self.__report_configure
 
         assert ConstantValues.train_dataset in entity_dict and ConstantValues.val_dataset in entity_dict
         core_chain = CoreRoute(
@@ -263,18 +295,59 @@ class UdfModelingGraph(BaseModelingGraph):
             auto_ml_trial_num=self._global_values[ConstantValues.auto_ml_trial_num],
             auto_ml_path=self._work_paths[ConstantValues.auto_ml_path],
             opt_model_names=self._global_values[ConstantValues.opt_model_names],
-            selector_configure_path=self._work_paths[ConstantValues.selector_configure_path]
+            selector_configure_path=self._work_paths[ConstantValues.selector_configure_path],
+            report_configure=self.__report_configure
         )
 
-        core_chain.run(**entity_dict)
+        try:
+            core_chain.run(**entity_dict)
+            report_configure = preprocess_chain.report_configure
+        except PipeLineLogicError:
+            self.__report_configure.main_pipeline.info = "Error: pipeline logic error happens in core chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            self.__report_configure.update(report_configure)
+            return self.__report_configure
+        except (ValueError,
+                TypeError,
+                RuntimeError,
+                IndexError,
+                IOError,
+                BaseException):
+            self.__report_configure.update(report_configure)
+            self.__report_configure.main_pipeline.info = "General error happens in preprocessing chain."
+            self.__report_configure.main_pipeline.success_flag = False
+            return self.__report_configure
+
         local_metric = core_chain.optimal_metric
+
         assert local_metric is not None
+
+        self.__report_configure.main_pipeline.success_flag = True
+        self.__report_configure.main_pipeline.info = "Generate model successfully."
+
+        report_configure = self.__replace_type(report_configure=self.__report_configure)
+        yaml_write(yaml_dict=report_configure,
+                   yaml_file=feature_dict[ConstantValues.success_file_path])
+
         return {"work_model_root": work_model_root,
                 "model_name": params.get(ConstantValues.model_name),
                 "increment_flag": False,
                 "metric_result": local_metric,
                 "final_file_path":
                     feature_dict[ConstantValues.final_feature_configure]}
+
+    def run(self):
+        """
+        Start training model with pipeline.
+        :return:
+        """
+        try:
+            self._run()
+            self.__report_configure.success_flag = True
+        except NoResultReturnException:
+            self.__report_configure.success_flag = False
+
+        self._set_pipeline_config()
 
     def _run(self):
         train_results = []
@@ -289,8 +362,12 @@ class UdfModelingGraph(BaseModelingGraph):
             else:
                 local_result = self._run_route(model_name=model)
 
-            if local_result is not None:
+            if self.__report_configure.main_pipeline.success_flag is True:
                 train_results.append(local_result)
+
+        if len(train_results) == 0:
+            raise NoResultReturnException("No model is trained successfully.")
+
         self._find_best_result(train_results=train_results)
 
     def _find_best_result(self, train_results):
@@ -315,7 +392,7 @@ class UdfModelingGraph(BaseModelingGraph):
                 best_model_result = result
             else:
                 if result.get(ConstantValues.metric_result) is not None:
-                    if best_result.get(model_name).get(ConstantValues.metric_result).__cmp__(
+                    if best_model_result.get(ConstantValues.metric_result).__cmp__(
                             result.get(ConstantValues.metric_result)) < 0:
                         best_model_result = result
 
@@ -344,7 +421,11 @@ class UdfModelingGraph(BaseModelingGraph):
 
         yaml_write(yaml_dict=yaml_dict,
                    yaml_file=join(self._work_paths["work_root"], feature_dict.pipeline_configure))
-        yaml_write(yaml_dict={},
+
+        self.__report_configure.success_flag = True
+        report_configure = self.__replace_type(report_configure=self.__report_configure)
+
+        yaml_write(yaml_dict=report_configure,
                    yaml_file=join(self._work_paths["work_root"], feature_dict.success_file_name))
 
     @property
@@ -363,3 +444,63 @@ class UdfModelingGraph(BaseModelingGraph):
             return PreprocessRoute(**params)
         if name == ConstantValues.CoreRoute:
             return CoreRoute(**params)
+
+    def __init_report_configure(self):
+        self.__report_configure = Bunch(
+            entity_configure=Bunch(
+                dataset=Bunch(),
+                feature_conf=Bunch(),
+                loss=Bunch(),
+                metric=Bunch(),
+                model=Bunch()
+            ),
+            component_configure=Bunch(
+                type_inference=Bunch(),
+                data_clear=Bunch(),
+                label_encode=Bunch(),
+                feature_generation=Bunch(),
+                unsupervised_feature_selector=Bunch(),
+                supervised_feature_selector=Bunch()
+            ),
+            main_pipeline=Bunch(),
+            success_flag=None
+        )
+
+    def report_configure(self):
+        return self.__report_configure
+
+    @classmethod
+    def __replace_type(cls, report_configure: dict):
+        """
+        This method will replace folder name in a json dict by recursion method.
+        :param report_configure: Bunch object.
+        :return: dict object.
+        """
+        if isinstance(report_configure, Bunch):
+            report_configure = dict(report_configure)
+
+        for key in report_configure.keys():
+            if isinstance(report_configure[key], Bunch):
+                report_configure[key] = dict(report_configure[key])
+                cls.__replace_type(
+                    report_configure=report_configure[key]
+                )
+        return report_configure
+
+    @classmethod
+    def __restore_type(cls, report_configure: dict):
+        """
+        This method will replace folder name in a json dict by recursion method.
+        :param report_configure: Bunch object.
+        :return: dict object.
+        """
+        if not isinstance(report_configure, Bunch) and isinstance(report_configure, dict):
+            report_configure = Bunch(**report_configure)
+
+        for key in report_configure.keys():
+            if not isinstance(report_configure[key], Bunch) and isinstance(report_configure[key], dict):
+                report_configure[key] = Bunch(**report_configure[key])
+                cls.__restore_type(
+                    report_configure=report_configure[key]
+                )
+        return report_configure

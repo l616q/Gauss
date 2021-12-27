@@ -13,18 +13,22 @@ class BaseFeatureSelector(Component):
     """
     BaseFeatureSelector object.
     """
+
     def __init__(self,
                  name: str,
                  train_flag: str,
                  enable: bool,
                  task_name: str,
-                 feature_configure_path):
-
-        super(BaseFeatureSelector, self).__init__(name=name,
-                                                  train_flag=train_flag,
-                                                  enable=enable,
-                                                  task_name=task_name)
-        self._feature_configure_path = feature_configure_path
+                 source_file_path: str = None,
+                 final_file_path: str = None):
+        super().__init__(
+            name=name,
+            train_flag=train_flag,
+            enable=enable,
+            task_name=task_name,
+            source_file_path=source_file_path,
+            final_file_path=final_file_path
+        )
 
     @abc.abstractmethod
     def _train_run(self, **entity):

@@ -18,7 +18,9 @@ from sklearn.metrics import mean_squared_error
 
 from entity.metrics.base_metric import BaseMetric
 from entity.metrics.base_metric import MetricResult
+from utils.constant_values import ConstantValues
 
+from icecream import ic
 
 class AUC(BaseMetric):
     """
@@ -28,10 +30,17 @@ class AUC(BaseMetric):
         super().__init__(
             name=params["name"],
             optimize_mode="maximize",
-            label_name=params["label_name"]
+            label_name=params["target_name"]
             )
 
+        self.__callback_func = params[ConstantValues.callback_func]
         self._metric_result = None
+
+        message = "Create AUC object successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="metric",
+                             success_flag=True,
+                             message=message)
 
     def __repr__(self):
         if self._metric_result is None:
@@ -54,11 +63,19 @@ class AUC(BaseMetric):
         :param labels_map: key: label name, str, value: np.ndarray object, (n_samples,)
         :return: MetricResult object
         """
-        # assert self._label_name is not None, "Value: label name can not be None."
-        # assert self._label_name in labels_map, \
-        #     "Label name: {} does not exist in labels_map: {}".format(
-        #         self._label_name, labels_map.keys()
-        #     )
+        try:
+            assert self._label_name is not None, "Value: label name can not be None."
+            assert self._label_name in labels_map, \
+                "Label name: {} does not exist in labels_map: {}".format(
+                    self._label_name, labels_map.keys()
+                )
+        except AssertionError:
+            message = "Parameters is not complete."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="metric",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         label = labels_map[self._label_name[0]]
         if np.sum(label) == 0 or np.sum(label) == label.shape[0]:
@@ -73,6 +90,12 @@ class AUC(BaseMetric):
                                                result=auc,
                                                meta={'#': predict.size},
                                                optimize_mode=self._optimize_mode)
+
+        message = "Calculate AUC Value successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="metric",
+                             success_flag=True,
+                             message=message)
 
         return self._metric_result
 
@@ -94,8 +117,15 @@ class BinaryF1(BaseMetric):
         super().__init__(name=params["name"],
                          optimize_mode="maximize")
 
+        self.__callback_func = params[ConstantValues.callback_func]
         self._metric_result = None
         self._threshold = 0.5
+
+        message = "Create BinaryF1 object successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="metric",
+                             success_flag=True,
+                             message=message)
 
     def __repr__(self):
         print("F1 is running!")
@@ -106,11 +136,19 @@ class BinaryF1(BaseMetric):
         :param labels_map: np.ndarray object, (n_samples)
         :return: MetricResult object
         """
-        assert self._label_name is not None, "Value: label name can not be None."
-        assert self._label_name in labels_map, \
-            "Label name: {} does not exist in labels_map: {}".format(
-                self._label_name, labels_map.keys()
-            )
+        try:
+            assert self._label_name is not None, "Value: label name can not be None."
+            assert self._label_name in labels_map, \
+                "Label name: {} does not exist in labels_map: {}".format(
+                    self._label_name, labels_map.keys()
+                )
+        except AssertionError:
+            message = "Parameters is not complete."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="metric",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         label = labels_map[self._label_name]
         if np.sum(label) == 0 or np.sum(label) == label.shape[0]:
@@ -129,6 +167,12 @@ class BinaryF1(BaseMetric):
                 result=f1,
                 meta={'#': predict.size},
                 optimize_mode=self._optimize_mode)
+
+        message = "Calculate BinaryF1 Value successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="metric",
+                             success_flag=True,
+                             message=message)
 
         return self._metric_result
 
@@ -150,8 +194,16 @@ class MulticlassF1(BaseMetric):
         super().__init__(name=params["name"],
                          optimize_mode="maximize")
 
+        self.__callback_func = params[ConstantValues.callback_func]
+
         self._metric_result = None
         self._threshold = 0.5
+
+        message = "Create MulticlassF1 object successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="metric",
+                             success_flag=True,
+                             message=message)
 
     def __repr__(self):
         print("F1 is running!")
@@ -162,25 +214,36 @@ class MulticlassF1(BaseMetric):
         :param labels_map: np.ndarray object, (n_samples)
         :return: MetricResult object
         """
-        assert self._label_name is not None, "Value: label name can not be None."
-        assert self._label_name in labels_map, \
-            "Label name: {} does not exist in labels_map: {}".format(
-                self._label_name, labels_map.keys()
-            )
+        try:
+            assert self._label_name is not None, "Value: label name can not be None."
+            assert self._label_name in labels_map, \
+                "Label name: {} does not exist in labels_map: {}".format(
+                    self._label_name, labels_map.keys()
+                )
+        except AssertionError:
+            message = "Parameters is not complete."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="metric",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         label = labels_map[self._label_name]
-        if np.sum(label) == 0 or np.sum(label) == label.shape[0]:
-            pass
-        else:
-            predict_label = [result.tolist().index(max(result)) for result in predict]
-            f1 = f1_score(y_true=label, y_pred=predict_label, average="macro")
-            self._metric_result = MetricResult(
-                name=self._name,
-                metric_name=self._name,
-                result=f1,
-                meta={'#': predict.size},
-                optimize_mode=self._optimize_mode)
+        predict_label = [result.tolist().index(max(result)) for result in predict]
 
+        f1 = f1_score(y_true=label, y_pred=predict_label, average="macro")
+        self._metric_result = MetricResult(
+            name=self._name,
+            metric_name=self._name,
+            result=f1,
+            meta={'#': predict.size},
+            optimize_mode=self._optimize_mode)
+
+        message = "Calculate MulticlassF1 Value successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="metric",
+                             success_flag=True,
+                             message=message)
         return self._metric_result
 
     @property
@@ -201,8 +264,16 @@ class MSE(BaseMetric):
         super().__init__(name=params["name"],
                          optimize_mode="minimize")
 
+        self.__callback_func = params[ConstantValues.callback_func]
+
         self._metric_result = None
         self._threshold = 0.5
+
+        message = "Create MSE object successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="metric",
+                             success_flag=True,
+                             message=message)
 
     def __repr__(self):
         print("MSE is running!")
@@ -213,23 +284,35 @@ class MSE(BaseMetric):
         :param labels_map: np.ndarray object, (n_samples)
         :return: MetricResult object
         """
-        assert self._label_name is not None, "Value: label name can not be None."
-        assert self._label_name in labels_map, \
-            "Label name: {} does not exist in labels_map: {}".format(
-                self._label_name, labels_map.keys()
-            )
+        try:
+            assert self._label_name is not None, "Value: label name can not be None."
+            assert self._label_name in labels_map, \
+                "Label name: {} does not exist in labels_map: {}".format(
+                    self._label_name, labels_map.keys()
+                )
+        except AssertionError:
+            message = "Parameters is not complete."
+            self.__callback_func(type_name="entity_configure",
+                                 object_name="metric",
+                                 success_flag=False,
+                                 message=message)
+            raise ValueError(message)
 
         label = labels_map[self._label_name]
-        if np.sum(label) == 0 or np.sum(label) == label.shape[0]:
-            pass
-        else:
-            mse = mean_squared_error(y_true=label, y_pred=predict)
-            self._metric_result = MetricResult(
-                name=self._name,
-                metric_name=self._name,
-                result=mse,
-                meta={'#': predict.size},
-                optimize_mode=self._optimize_mode)
+
+        mse = mean_squared_error(y_true=label, y_pred=predict)
+        self._metric_result = MetricResult(
+            name=self._name,
+            metric_name=self._name,
+            result=mse,
+            meta={'#': predict.size},
+            optimize_mode=self._optimize_mode)
+
+        message = "Calculate MSE Value successfully."
+        self.__callback_func(type_name="entity_configure",
+                             object_name="metric",
+                             success_flag=True,
+                             message=message)
 
         return self._metric_result
 

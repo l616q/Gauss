@@ -25,18 +25,16 @@ class PlainLabelEncode(BaseLabelEncode):
     """
     BaseLabelEncode Object.
     """
-
     def __init__(self, **params):
-
         super().__init__(
             name=params[ConstantValues.name],
             train_flag=params[ConstantValues.train_flag],
             enable=params[ConstantValues.enable],
             task_name=params[ConstantValues.task_name],
-            feature_configure_path=params[ConstantValues.feature_configure_path]
+            source_file_path=params[ConstantValues.source_file_path],
+            final_file_path=params[ConstantValues.final_file_path]
         )
-
-        self.__final_file_path = params["final_file_path"]
+        self.__callback_func = params[ConstantValues.callback_func]
 
         self.__feature_configure = None
 
@@ -54,16 +52,22 @@ class PlainLabelEncode(BaseLabelEncode):
 
         self.__load_dataset_configure()
 
-        logger.info("Starting label encoding, " + "with current memory usage: %.2f GiB",
+        logger.info("Starting label encoding, with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
         self.__encode_label(dataset=dataset)
         self.__switch_label(switch_type=self.__regression_label_switch,
                             dataset=dataset)
 
-        logger.info("Label encoding serialize, " + "with current memory usage: %.2f GiB",
+        logger.info("Label encoding serialize, with current memory usage: %.2f GiB",
                     get_current_memory_gb()["memory_usage"])
         self.__serialize_label_encoding()
         self.__generate_final_configure()
+
+        message = "Plain label encode executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="label_encode",
+                             success_flag=True,
+                             message=message)
 
     def _increment_run(self, **entity):
         assert ConstantValues.increment_dataset in entity.keys()
@@ -77,7 +81,7 @@ class PlainLabelEncode(BaseLabelEncode):
         feature_names = dataset.get_dataset().feature_names
         target_names = dataset.get_dataset().target_names
 
-        self.__feature_configure = yaml_read(yaml_file=self.__final_file_path)
+        self.__feature_configure = yaml_read(yaml_file=self._final_file_path)
 
         with shelve.open(self.__label_encoding_configure_path) as shelve_open:
             le_model_list = shelve_open['label_encoding']
@@ -85,10 +89,14 @@ class PlainLabelEncode(BaseLabelEncode):
 
             for col in feature_names:
                 if not isinstance(self.__feature_configure, dict):
-                    raise TypeError(
-                        "Value: self.__feature_configure is not a correct data type, type: {}".format(
+                    message = "Value: self.__feature_configure is not a correct data type, type: {}".format(
                             type(self.__feature_configure)
-                        ))
+                        )
+                    self.__callback_func(type_name="component_configure",
+                                         object_name="label_encode",
+                                         success_flag=False,
+                                         message=message)
+                    raise TypeError(message)
 
                 # transform features
                 if self.__feature_configure[col]['ftype'] == "category" or \
@@ -104,8 +112,13 @@ class PlainLabelEncode(BaseLabelEncode):
                             logger.info(
                                 "feature: " + str(col) + " has an abnormal value (unseen by label encoding): " + str(
                                     item))
-                            raise ValueError("feature: " + str(
-                                col) + " has an abnormal value (unseen by label encoding): " + str(item))
+                            message = "feature: " + str(
+                                col) + " has an abnormal value (unseen by label encoding): " + str(item)
+                            self.__callback_func(type_name="component_configure",
+                                                 object_name="label_encode",
+                                                 success_flag=False,
+                                                 message=message)
+                            raise ValueError(message)
 
                     data[col] = le_model.transform(data[col])
 
@@ -124,8 +137,13 @@ class PlainLabelEncode(BaseLabelEncode):
                             logger.info(
                                 "feature: " + str(col) + " has an abnormal value (unseen by label encoding): " + str(
                                     item))
-                            raise ValueError("feature: " + str(
-                                col) + " has an abnormal value (unseen by label encoding): " + str(item))
+                            message = "feature: " + str(
+                                col) + " has an abnormal value (unseen by label encoding): " + str(item)
+                            self.__callback_func(type_name="component_configure",
+                                                 object_name="label_encode",
+                                                 success_flag=False,
+                                                 message=message)
+                            raise ValueError(message)
 
                     target[col] = le_model.transform(target[col])
                 else:
@@ -133,6 +151,12 @@ class PlainLabelEncode(BaseLabelEncode):
                     trans_func = le_model_list["switch"]["func"]
                     trans_params = le_model_list["switch"]["params"]
                     target[col] = trans_func(target[col], *trans_params)
+
+        message = "Plain label encode executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="label_encode",
+                             success_flag=True,
+                             message=message)
 
     def _predict_run(self, **entity):
         assert "infer_dataset" in entity.keys()
@@ -142,17 +166,22 @@ class PlainLabelEncode(BaseLabelEncode):
         assert isinstance(data, pd.DataFrame)
         feature_names = dataset.get_dataset().feature_names
 
-        self.__feature_configure = yaml_read(yaml_file=self.__final_file_path)
+        self.__feature_configure = yaml_read(yaml_file=self._final_file_path)
 
         with shelve.open(self.__label_encoding_configure_path) as shelve_open:
             le_model_list = shelve_open['label_encoding']
 
             for col in feature_names:
                 if not isinstance(self.__feature_configure, dict):
-                    raise TypeError(
-                        "Value: self.__feature_configure is not a correct data type, type: {}".format(
+                    message = "Value: self.__feature_configure is not a correct data type, type: {}".format(
                             type(self.__feature_configure)
-                        ))
+                        )
+
+                    self.__callback_func(type_name="component_configure",
+                                         object_name="label_encode",
+                                         success_flag=False,
+                                         message=message)
+                    raise TypeError(message)
 
                 if self.__feature_configure[col]['ftype'] == "category" \
                         or self.__feature_configure[col]['ftype'] == "bool":
@@ -166,14 +195,25 @@ class PlainLabelEncode(BaseLabelEncode):
                         try:
                             le_model.transform([item])
                         except ValueError:
+                            message = "feature: " + str(
+                                col) + " has an abnormal value (unseen by label encoding): " + str(item)
                             logger.info(
                                 "feature: " + str(col) + " has an abnormal value (unseen by label encoding): " + str(
                                     item))
                             logger.info("Label dict: {}".format(label_dict))
-                            raise ValueError("feature: " + str(
-                                col) + " has an abnormal value (unseen by label encoding): " + str(item))
+                            self.__callback_func(type_name="component_configure",
+                                                 object_name="label_encode",
+                                                 success_flag=False,
+                                                 message=message)
+                            raise ValueError(message)
 
                     data[col] = le_model.transform(data[col])
+
+        message = "Plain label encode executes successfully."
+        self.__callback_func(type_name="component_configure",
+                             object_name="label_encode",
+                             success_flag=True,
+                             message=message)
 
     def __encode_label(self, dataset: BaseDataset):
         data = dataset.get_dataset().data
@@ -210,10 +250,10 @@ class PlainLabelEncode(BaseLabelEncode):
             shelve_open['label_encoding'] = self.__label_encoding
 
     def __load_dataset_configure(self):
-        self.__feature_configure = yaml_read(self._feature_configure_path)
+        self.__feature_configure = yaml_read(self._source_file_path)
 
     def __generate_final_configure(self):
-        yaml_write(yaml_dict=self.__feature_configure, yaml_file=self.__final_file_path)
+        yaml_write(yaml_dict=self.__feature_configure, yaml_file=self._final_file_path)
 
     def __switch_label(self, switch_type: str, dataset: BaseDataset):
         if self._task_name == ConstantValues.regression:
@@ -222,9 +262,13 @@ class PlainLabelEncode(BaseLabelEncode):
 
             for label in target_names:
                 if label not in target.columns:
-                    raise ValueError(
-                        "label: {} is not in target names: {}.".format(
-                            label, target.columns))
+                    message = "label: {} is not in target names: {}.".format(
+                            label, target.columns)
+                    self.__callback_func(type_name="component_configure",
+                                         object_name="label_encode",
+                                         success_flag=False,
+                                         message=message)
+                    raise ValueError(message)
                 if switch_type == "log":
                     target[label] = np.log(target[label])
                     switch_func = np.log
@@ -248,9 +292,13 @@ class PlainLabelEncode(BaseLabelEncode):
                     switch_func = switch_func
                     params = ()
                 else:
-                    raise ValueError(
-                        "switch type: {} is not in switch types: {}.".format(
-                            switch_type, ConstantValues.switch_types))
+                    message = "switch type: {} is not in switch types: {}.".format(
+                            switch_type, ConstantValues.switch_types)
+                    self.__callback_func(type_name="component_configure",
+                                         object_name="label_encode",
+                                         success_flag=False,
+                                         message=message)
+                    raise ValueError(message)
                 self.__label_encoding["switch"] = {"func": switch_func, "params": params}
         else:
             return None
