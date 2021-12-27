@@ -18,7 +18,7 @@ class NetworkFactory():
 
     @staticmethod
     def get_network(task_name):
-        if task_name == NetworkFactory.CLS:
+        if task_name == NetworkFactory.BinaryCLS:
             return MlpBinaryClsNetwork
         elif task_name == NetworkFactory.MulCLS:
             return MlpMultiClsNetwork

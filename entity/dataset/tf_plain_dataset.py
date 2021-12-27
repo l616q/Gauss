@@ -29,8 +29,8 @@ class TFPlainDataset(BaseDataset):
         :param file_repeat_count: int, repeat count times, activate when file_repeat is True.
         :param shuffle_buffer_size: int, count of elements will be filled in buffer.
         :param prefetch_buffer_size: int, count of elements will be prefetched from dataset.
-        :param drop_remainder: bool, drop last element when drop_remainder is True and number of elements
-                                can not divide batch_size evenly; keep if True.
+        :param drop_remainder: bool, drop last element when drop_remainder is True and number of 
+            elements can not divide batch_size evenly; keep if True.
         """
         if not isinstance(params["dataset"], PlaintextDataset):
             raise TypeError("dataset must be a instance of PlainDataset.")
@@ -80,7 +80,7 @@ class TFPlainDataset(BaseDataset):
         self._selected_features = features
         self._categorical_features = cate_fea
 
-    def bulid(self):
+    def build(self):
         """build the dataset could be used in the tensorflow work flow.
         
         this function include 3 procedures: 
@@ -115,7 +115,9 @@ class TFPlainDataset(BaseDataset):
         """
         if not hasattr(self, "_iterator"):
             raise AttributeError("dataset has not been iterated, use build() before init().")
-        self._iterator.initializer.run(session=sess, feed_dict={self._batch_size: self._default_batch_size})
+        self._iterator.initializer.run(session=sess, feed_dict={
+            self._batch_size: self._default_batch_size
+            })
             
     @property 
     def target_names(self):
@@ -128,7 +130,9 @@ class TFPlainDataset(BaseDataset):
     @property
     def next_batch(self):
         if not hasattr(self, "_next_batch"):
-            raise AttributeError("tf dataset has not been built yet, call `build()` function before use next_batch")
+            raise AttributeError(
+                "tf dataset has not been built yet, call `build()` function before use next_batch"
+                )
         return self._next_batch
 
     @property

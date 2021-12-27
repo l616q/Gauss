@@ -29,6 +29,7 @@ from utils.feature_name_exec import generate_feature_list
 from core.tfdnn.factory.network_factory import NetworkFactory
 from core.tfdnn.factory.loss_factory import LossFunctionFactory
 
+from icecream import ic
 
 class GaussNN(ModelWrapper):
     """Multi layer perceptron neural network wrapper.
@@ -174,10 +175,12 @@ class GaussNN(ModelWrapper):
         val_dataset.build()
         
         train_dataset.update_dataset_parameters(
-            self._model_params["batch_size"]
+            batch_size = self._model_params["batch_size"],
+            label_class_count = 2
             )
         val_dataset.update_dataset_parameters(
-            self._model_params["batch_size"]
+            self._model_params["batch_size"],
+            label_class_count = 2
             )
 
         # Phase 2. Create Feature Statistics, and Run -----------------------
@@ -229,7 +232,7 @@ class GaussNN(ModelWrapper):
             learning_rate=self._model_params["learning_rate"],
             optimizer_type=self._model_params["optimizer_type"],
             train_epochs=self._model_params["train_epochs"],
-            early_stop=False,
+            early_stop=self._model_params["early_stop"],
             evaluator=self._evaluator,
             save_checkpoints_dir=self._save_checkpoints_dir,
             tensorboard_logdir=self._save_tensorboard_logdir
@@ -447,68 +450,54 @@ class GaussNN(ModelWrapper):
         import tensorflow as tf
         tf.compat.v1.reset_default_graph()
 
-    def model_save(self):
-        pass
-
-    def get_train_metric(self):
-        pass
-
-    def get_train_loss(self):
-        pass
-
-    def get_val_loss(self):
-        pass
-
-    def _train_preprocess(self):
-        pass
-
-    def _predict_process(self):
-        pass
-
-    def _generate_sub_dataset(self):
-        pass
-
     def _initialize_model(self):
         pass
 
-    def _eval_func(self):
+    def _update_best(self):
         pass
-
-    def _loss_func(self):
-        pass
-
+    
     def _binary_train(self):
         pass
-
+    
     def _multiclass_train(self):
-        pass
-
-    def _binary_increment(self):
-        pass
-
-    def _eval(self):
-        pass
-
-    def _multiclass_increment(self):
-        pass
-
-    def _predict_logit(self):
-        pass
-
-    def _predict_preprocess(self):
-        pass
-
-    def _predict_prob(self):
-        pass
-
-    def _regression_increment(self):
         pass
 
     def _regression_train(self):
         pass
 
+    def _binary_increment(self):
+        pass
+
+    def _multiclass_increment(self):
+        pass
+
+    def _regression_increment(self):
+        pass
+
+    def model_save(self):
+        pass
+
+    def _predict_prob(self):
+        pass
+
+    def _predict_logit(self):
+        pass
+
+    def _eval(self):
+        pass
+
     def _set_best(self):
         pass
 
-    def _update_best(self):
+    def _train_preprocess(self):
         pass
+
+    def _predict_preprocess(self):
+        pass
+
+    def _loss_func(self):
+        pass
+
+    def _eval_func(self):
+        pass
+    
