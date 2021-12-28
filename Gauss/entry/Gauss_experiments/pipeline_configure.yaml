@@ -1,0 +1,17 @@
+data_clear_flag: false
+data_clear_name: plain_data_clear
+dataset_name: plaindataset
+feature_generator_flag: false
+feature_generator_name: featuretools_generation
+metric_name: binary_f1
+model_zoo:
+- lightgbm
+supervised_feature_selector_flag: false
+supervised_feature_selector_name: supervised_feature_selector
+target_names:
+- deposit
+task_name: binary_classification
+type_inference_name: plain_type_inference
+unsupervised_feature_selector_flag: false
+unsupervised_feature_selector_name: unsupervised_feature_selector
+work_root: ./Gauss_experiments/
