@@ -8,7 +8,7 @@ from __future__ import absolute_import
 
 import tensorflow as tf
 
-from core.tfdnn.networks.base_network import BaseNetwork
+from Gauss.core.tfdnn.networks.base_network import BaseNetwork
 
 
 class MlpRegNetwork(BaseNetwork):

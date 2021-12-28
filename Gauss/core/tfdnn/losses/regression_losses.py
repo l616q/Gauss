@@ -8,7 +8,7 @@ from __future__ import absolute_import
 
 import tensorflow as tf
 
-from core.tfdnn.losses.base_loss import BaseLoss
+from Gauss.core.tfdnn.losses.base_loss import BaseLoss
 
 
 class MeanSquareErrorLoss(BaseLoss):

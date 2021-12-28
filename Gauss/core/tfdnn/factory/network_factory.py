@@ -3,7 +3,7 @@
 # Copyright (c) 2021, Citic-Lab. All rights reserved.
 # Authors: citic-lab
 
-from core.tfdnn.networks.mlp_network import (
+from Gauss.core.tfdnn.networks.mlp_network import (
     MlpBinaryClsNetwork,
     MlpMultiClsNetwork,
     MlpRegNetwork

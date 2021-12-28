@@ -3,7 +3,7 @@
 # Copyright (c) 2021, Citic-Lab. All rights reserved.
 # Authors: citic-lab
 
-from core.tfdnn.utils.loggers import EarlyStopLogger 
+from Gauss.core.tfdnn.utils.loggers import EarlyStopLogger 
 
 class Earlystop(object):
     # TODO: extend more metrics to be monitored.

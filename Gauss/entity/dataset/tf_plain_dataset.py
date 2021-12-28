@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from entity.dataset.base_dataset import BaseDataset
-from entity.dataset.plain_dataset import PlaintextDataset
+from Gauss.entity.dataset.base_dataset import BaseDataset
+from Gauss.entity.dataset.plain_dataset import PlaintextDataset
 
 pd.options.mode.chained_assignment = None  # default = "warn"
 

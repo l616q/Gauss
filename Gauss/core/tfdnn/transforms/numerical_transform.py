@@ -8,7 +8,7 @@ from __future__ import absolute_import
 
 import tensorflow as tf
 
-from core.tfdnn.transforms.base_transform import BaseTransform
+from Gauss.core.tfdnn.transforms.base_transform import BaseTransform
 
 
 class ClsNumericalTransform(BaseTransform):

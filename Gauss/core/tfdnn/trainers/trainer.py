@@ -6,8 +6,8 @@
 from __future__ import division
 from __future__ import absolute_import
 
-from core.tfdnn.trainers.base_trainer import BaseTrainer
-from core.tfdnn.utils.earlystop import Earlystop
+from Gauss.core.tfdnn.trainers.base_trainer import BaseTrainer
+from Gauss.core.tfdnn.utils.earlystop import Earlystop
 
 
 class Trainer(BaseTrainer):

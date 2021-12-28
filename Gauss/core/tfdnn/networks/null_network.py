@@ -6,7 +6,7 @@
 from __future__ import division
 from __future__ import absolute_import
 
-from core.tfdnn.networks.base_network import BaseNetwork
+from Gauss.core.tfdnn.networks.base_network import BaseNetwork
 
 
 class NullNetwork(BaseNetwork):

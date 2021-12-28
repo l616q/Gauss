@@ -8,8 +8,8 @@ from __future__ import absolute_import
 
 import tensorflow as tf
 
-from core.tfdnn.statistics_gens.statistics import Statistics
-from core.tfdnn.statistics_gens.base_statistics_gen import BaseStatisticsGen
+from Gauss.core.tfdnn.statistics_gens.statistics import Statistics
+from Gauss.core.tfdnn.statistics_gens.base_statistics_gen import BaseStatisticsGen
 
 
 class DatasetStatisticsGen(BaseStatisticsGen):

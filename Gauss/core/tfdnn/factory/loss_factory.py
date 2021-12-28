@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from core.tfdnn.losses.classification_losses import (
+from Gauss.core.tfdnn.losses.classification_losses import (
     BinaryCrossEntropyLoss,
     SoftmaxCrossEntropyLoss
     )
-from core.tfdnn.losses.regression_losses import (
+from Gauss.core.tfdnn.losses.regression_losses import (
     MeanAbsoluteErrorLoss, 
     MeanSquareErrorLoss,
     HuberLoss

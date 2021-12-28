@@ -8,7 +8,7 @@ from __future__ import absolute_import
 
 import abc
 
-from core.tfdnn.statistics_gens.statistics import Statistics
+from Gauss.core.tfdnn.statistics_gens.statistics import Statistics
 
 
 class BaseStatisticsGen(metaclass=abc.ABCMeta):

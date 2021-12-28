@@ -6,8 +6,8 @@
 from __future__ import division
 from __future__ import absolute_import
 
-from core.tfdnn.statistics_gens.statistics import Statistics
-from core.tfdnn.statistics_gens.base_statistics_gen import BaseStatisticsGen
+from Gauss.core.tfdnn.statistics_gens.statistics import Statistics
+from Gauss.core.tfdnn.statistics_gens.base_statistics_gen import BaseStatisticsGen
 
 
 class ExternalStatisticsGen(BaseStatisticsGen):
