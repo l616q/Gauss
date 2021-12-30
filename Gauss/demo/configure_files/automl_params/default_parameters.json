@@ -58,7 +58,15 @@
     "early_stopping_rounds": 5
   },
 
-  "dnn": {
+  "dnn_reg": {
+    "validate_steps": 50,
+    "log_steps": 50
+  },
+  "dnn_binary_cls": {
+    "validate_steps": 50,
+    "log_steps": 50
+  },
+  "dnn_multi_cls":{
     "validate_steps": 50,
     "log_steps": 50
   }

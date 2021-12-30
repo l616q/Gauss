@@ -11,8 +11,8 @@ import abc
 import time
 import tensorflow as tf
 
-from core.tfdnn.utils.loggers import TrainLogger
-from core.tfdnn.utils.loggers import ValidateLogger
+from Gauss.core.tfdnn.utils.loggers import TrainLogger
+from Gauss.core.tfdnn.utils.loggers import ValidateLogger
 
 from icecream import ic
 

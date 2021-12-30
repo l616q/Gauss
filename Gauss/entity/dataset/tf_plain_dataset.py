@@ -74,11 +74,11 @@ class TFPlainDataset(BaseDataset):
         """update private attribute selected_features, which are actually
         needed features in current trail.
         """
-        # if self._target_names:
-        #     self._selected_features = features + self._target_names
-        # else:
-        self._selected_features = features
-        self._categorical_features = cate_fea
+        if self._target_names:
+            self._selected_features = features + self._target_names
+        else:
+            self._selected_features = features
+            self._categorical_features = cate_fea
 
     def build(self):
         """build the dataset could be used in the tensorflow work flow.
@@ -146,7 +146,7 @@ class TFPlainDataset(BaseDataset):
 
     def _build_dataset(self):
         dataset = self._filter_feature(self._df_dataset)
-        dataset = self._dtype_cast(dataset)
+        # dataset = self._dtype_cast(dataset)
         dataset = self._build_raw_dataset(dataset)
         dataset = self._repeat_dataset(dataset)
         dataset = self._shuffle_and_batch(dataset)

@@ -9,3 +9,6 @@ test/
 experiment/
 experiments/
 cache/
+Gauss_experiments
+Gauss/demo
+Gauss/entry/test_train.py

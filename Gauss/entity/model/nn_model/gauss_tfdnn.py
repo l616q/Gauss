@@ -29,12 +29,13 @@ from Gauss.utils.feature_name_exec import generate_feature_list
 from Gauss.core.tfdnn.factory.network_factory import NetworkFactory
 from Gauss.core.tfdnn.factory.loss_factory import LossFunctionFactory
 
-from icecream import ic
 
 class GaussNN(ModelWrapper):
     """Multi layer perceptron neural network wrapper.
-    Model wrapper wrapped a neural network model which can be used in training 
-    or predicting. When training a model.
+
+    Model wrapper wrapped a neural network model which can be used in training,
+    increment training, and predicting. 
+
     Parameters:
     --------------
     model_root_path:
@@ -42,30 +43,35 @@ class GaussNN(ModelWrapper):
     metric_eval_used_flag:
     use_weight_flag:
     loss_func: str, loss function name using in current training.
-    TODO: check loss function when train_flag given.
+    TODO: fill description.
     """
 
     def __init__(self, **params):
-        """"""
+        name_dict = {
+            "binary_classification": "dnn_binary_cls",
+            "multiclass_classification": "dnn_multi_cls",
+            "regression": "dnn_reg"
+            } 
         super(GaussNN, self).__init__(
-            name=params["name"],
+            name=name_dict[params["task_name"]],
             model_root_path=params["model_root_path"],
             task_name=params["task_name"],
             train_flag=params["train_flag"],
             init_model_root=params["init_model_root"],
             metric_eval_used_flag=params["metric_eval_used_flag"],
-            use_weight_flag=params["use_weight_flag"],
+            # use_weight_flag=params["use_weight_flag"],
             decay_rate=params["decay_rate"] if params.get("decay_rate")
-            else None
+                else None
         )
 
-        self._loss_name = params["loss_func"]
+        # file name defintion
         self.model_file_name = self._model_root_path + "/" + self.name + ".txt"
         self.model_config_file_name = self._model_config_root + \
             "/" + self.name + ".model_conf.yaml"
         self.feature_config_file_name = self._feature_config_root + \
             "/" + self.name + ".final.yaml"
 
+        # model component saved path
         self._save_statistics_dir = os.path.join(
             self._model_root_path, "statistics")
         self._save_checkpoints_dir = os.path.join(
@@ -107,15 +113,14 @@ class GaussNN(ModelWrapper):
 
     def update_feature_conf(self, feature_conf):
         """Select features using in current model before 'dataset.build()'.
+
         Select features using in current model and classify them 
         to categorical or numerical. 'feature_conf' is the description
-        object of all features, property 'used' in conf will decided whether
+        object of all features, property 'used' in conf will decide whether
         to keep the feature or not, and features will be classified by it's 
-        `dtype` mentioned in config.
-        NOTE: this function called when `Supervised Feature Selection` activated.
+        `dtype` mentioned in 'feature_conf'.
         """
 
-        # self._feature_conf = feature_conf
         self._feature_list = generate_feature_list(feature_conf=feature_conf)
         self._categorical_features, self._numerical_features = \
             self._cate_num_split(feature_conf=feature_conf)
@@ -139,15 +144,28 @@ class GaussNN(ModelWrapper):
 
         return categorical_features, numerical_features
 
-    def train_init(self, **entity):
-        """Initialize modules using for training a model and build 
+    # Normal training
+    def _binary_train(self, train_dataset, val_dataset, **entity):
+        """binary classification trainer"""
+
+        self._train_init(train_dataset, val_dataset, **entity)
+        self._trainer.run()
+
+    def _multiclass_train(self, train_dataset, val_dataset, **entity):
+        """multi classification trainer"""
+
+        self._train_init(train_dataset, val_dataset, **entity)
+        self._trainer.run()
+
+    def _train_init(self, train_dataset, val_dataset, **entity):
+        """Initialize modules using in training a model and build 
         'Calculation Graph' by tensorflow.
-        Actually, neural network model includes several seperated modules,
+
+        A neural network training model includes seperated modules,
         'DatasetStatisticsGen', 'CategoricalTransform', 'NumericalTransform', 
-        'LossFunction', 'MlpNetwork', 'Evaluator', and 'Trainer', all above 
-        collaborate and support whole training procedure. Also, using tensorflow 
-        1.x backned, calculate graph and placeholders are create and feed 
-        before training. 
+        'LossFunction', 'MlpNetwork', 'Evaluator', and 'Trainer', all above parts
+        collaborate and construct a whole training procedure. 
+
         Parameters:
         --------------
         dataset: PlaintextDataset, dataset for training.
@@ -157,8 +175,9 @@ class GaussNN(ModelWrapper):
         self._reset_tf_graph()
 
         # Phase 1. Load and transform Dataset -----------------------
-        train_dataset = self.preprocess(entity["train_dataset"])
-        val_dataset = self.preprocess(entity["val_dataset"])
+        train_dataset = self.preprocess(train_dataset)
+        val_dataset = self.preprocess(val_dataset)
+
 
         train_dataset.update_features(
             self._feature_list, self._categorical_features)
@@ -167,7 +186,8 @@ class GaussNN(ModelWrapper):
 
         train_dataset.build()
         val_dataset.build()
-        
+
+        # TODO: fix the label_class_count
         train_dataset.update_dataset_parameters(
             batch_size = self._model_params["batch_size"],
             label_class_count = 2
@@ -190,11 +210,13 @@ class GaussNN(ModelWrapper):
             feature_names=self._categorical_features,
             embed_size=self._model_params["embed_size"],
         )
-        self._transform2 = RegNumericalTransform(
+        self._transform2 = ClsNumericalTransform(
             statistics=self._statistics,
             feature_names=self._numerical_features
         )
-        Loss = LossFunctionFactory.get_loss_function(func_name=self._loss_name)
+        Loss = LossFunctionFactory.get_loss_function(
+            func_name=self._model_params["loss_name"]
+            )
         Network = NetworkFactory.get_network(task_name=self._task_name)
         self._network = Network(
             categorical_features=self._categorical_features,
@@ -207,7 +229,7 @@ class GaussNN(ModelWrapper):
         # Phase 4. Create Evaluator and Trainer ----------------------------
         self._metric = entity["metric"]
         metrics_wrapper = {
-            self._metric.name: self._metric
+            self._metric._name: self._metric
         }
         self._evaluator = Evaluator(
             dataset=val_dataset,
@@ -216,6 +238,7 @@ class GaussNN(ModelWrapper):
             eval_fn=self._network.eval_fn,
             metrics=metrics_wrapper,
         )
+
         self._trainer = Trainer(
             dataset=train_dataset,
             transform_functions=[
@@ -232,11 +255,11 @@ class GaussNN(ModelWrapper):
             tensorboard_logdir=self._save_tensorboard_logdir
         )
 
-    def increment_init(self, **entity):
+    def increment_init(self, train_dataset, val_dataset, **entity):
 
         # Phase 1. Load and transform Dataset -----------------------
-        train_dataset = self.preprocess(entity["train_dataset"])
-        val_dataset = self.preprocess(entity["val_dataset"])
+        train_dataset = self.preprocess(train_dataset)
+        val_dataset = self.preprocess(val_dataset)
         train_dataset.update_features(
             self._feature_list, self._categorical_features)
         val_dataset.update_features(
@@ -288,11 +311,12 @@ class GaussNN(ModelWrapper):
         )
 
     def inference_init(self, **entity):
+        #TODO: sycn with super class
         """Initialize calculation graph and load 'tf.Variables' to graph for
         prediction mission.
-        Activate only in predict mission. Data statistic information from current 
-        best performance existed model will be loaded. And Checkpoint of same model
-        will be load to 'tf.Graph'
+        Activate only in predict mission. Data statistic information from 
+        current best performance existed model will be loaded. And Checkpoint 
+        of same model will be load to 'tf.Graph'
         """
         assert(entity.get("val_dataset"))
 
@@ -334,9 +358,6 @@ class GaussNN(ModelWrapper):
                 restore_checkpoints_dir=self._restore_checkpoints_dir,
             )
 
-    def train(self, **entity):
-        self.train_init(**entity)
-        self._trainer.run()
 
     def increment(self, **entity):
         self.increment_init(**entity)
@@ -347,16 +368,17 @@ class GaussNN(ModelWrapper):
         predict = self._inference_evaluator.run()
         return predict
 
-    def eval(self, **entity):
-        if self._train_flag:
-            print("Evaluation result:", self._metric.metrics_result)
-            return self._metrics.metrics_result
+    def _eval(self, train_dataset, val_dataset, metric, **entity):
+        if self._train_flag == "train":
+            pass
         else:
             self.inference_init(**entity)
             self._inference_evaluator.run()
 
     def update_best_model(self):
         assert self._trainer is not None
+        
+        self.metric_history.append(self._metric.metric_result.result)
 
         if self._best_metric_result is None or \
                 (self._metric.metric_result.result > self._best_metric_result):
@@ -386,7 +408,7 @@ class GaussNN(ModelWrapper):
             task_name=self._task_name,
             train_flag=self._train_flag,
             memory_only=True,
-            target_names=dataset.target_names
+            target_names=dataset.get_dataset().target_names
         )
         return dataset
 
@@ -411,7 +433,6 @@ class GaussNN(ModelWrapper):
             setattr(self, attr, None)
 
     def _update_checkpoint(self):
-        # TODO: implement latest ckpt to replace tf
         import tensorflow as tf
 
         if len(os.listdir(self._save_checkpoints_dir)) == 0:
@@ -440,6 +461,8 @@ class GaussNN(ModelWrapper):
         self._reset_trail()
 
     def _reset_tf_graph(self):
+        """dismiss the existed calculation graph"""
+
         import tensorflow as tf
         tf.compat.v1.reset_default_graph()
 
@@ -447,12 +470,6 @@ class GaussNN(ModelWrapper):
         pass
 
     def _update_best(self):
-        pass
-    
-    def _binary_train(self):
-        pass
-    
-    def _multiclass_train(self):
         pass
 
     def _regression_train(self):
@@ -474,9 +491,6 @@ class GaussNN(ModelWrapper):
         pass
 
     def _predict_logit(self):
-        pass
-
-    def _eval(self):
         pass
 
     def _set_best(self):

@@ -2,6 +2,7 @@
 
 Copyright (c) 2020, Citic Inc. All rights reserved.
 Authors: Lab"""
+
 from Gauss.gauss_factory.abstarct_guass import AbstractGauss
 
 from Gauss.entity.dataset.plain_dataset import PlaintextDataset
@@ -9,6 +10,7 @@ from Gauss.entity.feature_configuration.feature_config import FeatureConf
 from Gauss.entity.model.tree_model.gauss_lightgbm import GaussLightgbm
 from Gauss.entity.model.tree_model.gauss_xgboost import GaussXgboost
 from Gauss.entity.model.tree_model.guass_catboost import GaussCatboost
+from Gauss.entity.model.nn_model.gauss_tfdnn import GaussNN
 from Gauss.entity.metrics.udf_metric import AUC
 from Gauss.entity.metrics.udf_metric import BinaryF1
 from Gauss.entity.metrics.udf_metric import MulticlassF1
@@ -50,6 +52,8 @@ class EntityFactory(AbstractGauss):
             return GaussXgboost(**params)
         elif entity_name.lower() == "catboost":
             return GaussCatboost(**params)
+        elif entity_name.lower() == "dnn":
+            return GaussNN(**params)
         else:
             raise ValueError("Entity factory can not construct entity by name: %s.", entity_name)
 

@@ -287,10 +287,6 @@ class PreprocessRoute(Component):
         reduce_data(dataframe=val_dataset.get_dataset().data)
 
         logger.info("Dataset preprocessing has finished.")
-        for key in entity_dict["train_dataset"].get_dataset().keys():
-            print(entity_dict["train_dataset"].get_dataset()[key])
-            print(entity_dict["val_dataset"].get_dataset()[key])
-        assert 1 == 0
         return entity_dict
 
     def _increment_run(self, **entity):
