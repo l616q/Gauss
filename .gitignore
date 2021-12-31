@@ -6,9 +6,9 @@
 **/*.pyc
 test_dataset/
 test/
-experiment/
 experiments/
 cache/
 Gauss_experiments
 Gauss/demo
-Gauss/entry/test_train.py
+Gauss/entry/bin_cls_test_train.py
+Gauss/entry/reg_test_train.py

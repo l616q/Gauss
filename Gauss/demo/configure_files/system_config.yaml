@@ -12,7 +12,7 @@ opt_model_names:
 - tpe
 - random_search
 - anneal
-# - evolution
+- evolution
 supervised_feature_selector_name: supervised_feature_selector
 improved_supervised_feature_selector_name: improved_supervised_feature_selector
 supervised_selector_model_names:

@@ -28,6 +28,7 @@ from Gauss.utils.base import mkdir
 from Gauss.utils.feature_name_exec import generate_feature_list
 from Gauss.core.tfdnn.factory.network_factory import NetworkFactory
 from Gauss.core.tfdnn.factory.loss_factory import LossFunctionFactory
+from Gauss.core.tfdnn.utils.utils import Const
 
 
 class GaussNN(ModelWrapper):
@@ -189,11 +190,11 @@ class GaussNN(ModelWrapper):
 
         # TODO: fix the label_class_count
         train_dataset.update_dataset_parameters(
-            batch_size = self._model_params["batch_size"],
+            batch_size = self._model_params[Const.BATCH_SIZE],
             label_class_count = 2
             )
         val_dataset.update_dataset_parameters(
-            self._model_params["batch_size"],
+            self._model_params[Const.BATCH_SIZE],
             label_class_count = 2
             )
 
@@ -208,22 +209,22 @@ class GaussNN(ModelWrapper):
         self._transform1 = CategoricalTransform(
             statistics=self._statistics,
             feature_names=self._categorical_features,
-            embed_size=self._model_params["embed_size"],
+            embed_size=self._model_params[Const.EMBED_SIZE],
         )
         self._transform2 = ClsNumericalTransform(
             statistics=self._statistics,
             feature_names=self._numerical_features
         )
         Loss = LossFunctionFactory.get_loss_function(
-            func_name=self._model_params["loss_name"]
+            func_name=self._model_params[Const.LOSS_NAME]
             )
         Network = NetworkFactory.get_network(task_name=self._task_name)
         self._network = Network(
             categorical_features=self._categorical_features,
             numerical_features=self._numerical_features,
             task_name=self._task_name,
-            activation=self._model_params["activation"],
-            hidden_sizes=self._model_params["hidden_sizes"],
+            activation=self._model_params[Const.ACTIVATION],
+            hidden_sizes=self._model_params[Const.HIDDEN_SIZES],
             loss=Loss(label_name=train_dataset.target_names)
         )
         # Phase 4. Create Evaluator and Trainer ----------------------------
@@ -244,12 +245,12 @@ class GaussNN(ModelWrapper):
             transform_functions=[
                 self._transform1.transform_fn, self._transform2.transform_fn],
             train_fn=self._network.train_fn,
-            validate_steps=self._model_params["validate_steps"],
-            log_steps=self._model_params["log_steps"],
-            learning_rate=self._model_params["learning_rate"],
-            optimizer_type=self._model_params["optimizer_type"],
-            train_epochs=self._model_params["train_epochs"],
-            early_stop=self._model_params["early_stop"],
+            validate_steps=self._model_params[Const.VALIDATE_STEPS],
+            log_steps=self._model_params[Const.LOG_STEPS],
+            learning_rate=self._model_params[Const.LEARNING_RATE],
+            optimizer_type=self._model_params[Const.OPTIMIZER_TYPE],
+            train_epochs=self._model_params[Const.TRAIN_EPOCHS],
+            early_stop=self._model_params[Const.EARLY_STOP],
             evaluator=self._evaluator,
             save_checkpoints_dir=self._save_checkpoints_dir,
             tensorboard_logdir=self._save_tensorboard_logdir
